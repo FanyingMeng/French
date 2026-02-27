@@ -1,0 +1,226 @@
+[
+{"id": 1, "cn": "1", "fr": "un", "type": "word"},
+  {"id": 2, "cn": "2", "fr": "deux", "type": "word"},
+  {"id": 3, "cn": "3", "fr": "trois", "type": "word"},
+  {"id": 4, "cn": "4", "fr": "quatre", "type": "word"},
+  {"id": 5, "cn": "5", "fr": "cinq", "type": "word"},
+  {"id": 6, "cn": "6", "fr": "six", "type": "word"},
+  {"id": 7, "cn": "7", "fr": "sept", "type": "word"},
+  {"id": 8, "cn": "8", "fr": "huit", "type": "word"},
+  {"id": 9, "cn": "9", "fr": "neuf", "type": "word"},
+  {"id": 10, "cn": "10", "fr": "dix", "type": "word"},
+  {"id": 11, "cn": "11", "fr": "onze", "type": "word"},
+  {"id": 12, "cn": "12", "fr": "douze", "type": "word"},
+  {"id": 13, "cn": "13", "fr": "treize", "type": "word"},
+  {"id": 14, "cn": "14", "fr": "quatorze", "type": "word"},
+  {"id": 15, "cn": "15", "fr": "quinze", "type": "word"},
+  {"id": 16, "cn": "16", "fr": "seize", "type": "word"},
+  {"id": 17, "cn": "17", "fr": "dix-sept", "type": "word"},
+  {"id": 18, "cn": "18", "fr": "dix-huit", "type": "word"},
+  {"id": 19, "cn": "19", "fr": "dix-neuf", "type": "word"},
+  {"id": 20, "cn": "20", "fr": "vingt", "type": "word"},
+  {"id": 21, "cn": "21", "fr": "vingt et un", "type": "word"},
+  {"id": 22, "cn": "22", "fr": "vingt-deux", "type": "word"},
+  {"id": 23, "cn": "30", "fr": "trente", "type": "word"},
+  {"id": 24, "cn": "31", "fr": "trente et un", "type": "word"},
+  {"id": 25, "cn": "32", "fr": "trente-deux", "type": "word"},
+  {"id": 26, "cn": "40", "fr": "quarante", "type": "word"},
+  {"id": 27, "cn": "50", "fr": "cinquante", "type": "word"},
+  {"id": 28, "cn": "60", "fr": "soixante", "type": "word"},
+  {"id": 29, "cn": "70", "fr": "soixante-dix", "type": "word"},
+  {"id": 30, "cn": "71", "fr": "soixante et onze", "type": "word"},
+  {"id": 31, "cn": "72", "fr": "soixante-douze", "type": "word"},
+  {"id": 32, "cn": "80", "fr": "quatre-vingts", "type": "word"},
+  {"id": 33, "cn": "81", "fr": "quatre-vingt-un", "type": "word"},
+  {"id": 34, "cn": "90", "fr": "quatre-vingt-dix", "type": "word"},
+  {"id": 35, "cn": "91", "fr": "quatre-vingt-onze", "type": "word"},
+  {"id": 36, "cn": "99", "fr": "quatre-vingt-dix-neuf", "type": "word"},
+  {"id": 37, "cn": "100 (百)", "fr": "cent", "type": "word"},
+  {"id": 38, "cn": "1000 (千)", "fr": "mille", "type": "word"},
+  {"id": 39, "cn": "10 000 (万)", "fr": "dix mille", "type": "word"},
+  {"id": 40, "cn": "100 000 (十万)", "fr": "cent mille", "type": "word"},
+  {"id": 41, "cn": "1 000 000 (百万)", "fr": "un million", "type": "word"},
+  {"id": 42, "cn": "10 000 000 (千万)", "fr": "dix millions", "type": "word"},
+  {"id": 43, "cn": "100 000 000 (一亿)", "fr": "cent millions", "type": "word"},
+  {"id": 44, "cn": "1 000 000 000 (十亿)", "fr": "un milliard", "type": "word"},
+  {"id": 45, "cn": "名叫", "fr": "appeler", "type": "word"},
+  {"id": 46, "cn": "欢迎", "fr": "bienvenue", "type": "word"},
+  {"id": 47, "cn": "您好，早上好", "fr": "bonjour", "type": "word"},
+  {"id": 48, "cn": "这 (代词)", "fr": "ce", "type": "word"},
+  {"id": 49, "cn": "她/它 (主语)", "fr": "elle", "type": "word"},
+  {"id": 50, "cn": "和/而且", "fr": "et", "type": "word"},
+  {"id": 51, "cn": "是 (动词)", "fr": "être", "type": "word"},
+  {"id": 52, "cn": "大学生", "fr": "étudiant", "type": "word"},
+  {"id": 53, "cn": "女人/妻子", "fr": "femme", "type": "word"},
+  {"id": 54, "cn": "法国的", "fr": "français", "type": "word"},
+  {"id": 55, "cn": "法国人", "fr": "Français", "type": "word"},
+  {"id": 56, "cn": "他/它 (主语)", "fr": "il", "type": "word"},
+  {"id": 57, "cn": "意大利的", "fr": "italien", "type": "word"},
+  {"id": 58, "cn": "意大利人", "fr": "italien", "type": "word"},
+  {"id": 59, "cn": "我 (主语)", "fr": "je", "type": "word"},
+  {"id": 60, "cn": "我的 (阴性单数)", "fr": "ma", "type": "word"},
+  {"id": 61, "cn": "夫人", "fr": "madame", "type": "word"},
+  {"id": 62, "cn": "丈夫", "fr": "mari", "type": "word"},
+  {"id": 63, "cn": "我的 (阳性单数)", "fr": "mon", "type": "word"},
+  {"id": 64, "cn": "先生", "fr": "monsieur", "type": "word"},
+  {"id": 65, "cn": "国籍", "fr": "nationalité", "type": "word"},
+  {"id": 66, "cn": "姓氏", "fr": "nom", "type": "word"},
+  {"id": 67, "cn": "不 (副词)", "fr": "non", "type": "word"},
+  {"id": 68, "cn": "对/是的", "fr": "oui", "type": "word"},
+  {"id": 69, "cn": "名字", "fr": "prénom", "type": "word"},
+  {"id": 70, "cn": "谁", "fr": "qui", "type": "word"},
+  {"id": 71, "cn": "你 (主语)", "fr": "tu", "type": "word"},
+  {"id": 72, "cn": "这是/这儿是", "fr": "voici", "type": "word"},
+  {"id": 73, "cn": "您/你们 (主语)", "fr": "vous", "type": "word"},
+  {
+    "id": 101,
+    "cn": "有 (Avoir) - 现在时",
+    "type": "verb",
+    "conjugations": ["ai", "as", "a", "avons", "avez", "ont"]
+  },
+  {
+    "id": 102,
+    "cn": "是 (Être) - 现在时",
+    "type": "verb",
+    "conjugations": ["suis", "es", "est", "sommes", "êtes", "sont"]
+  },
+  {
+    "id": 103,
+    "cn": "去 (Aller) - 现在时",
+    "type": "verb",
+    "conjugations": ["vais", "vas", "va", "allons", "allez", "vont"]
+  },
+  {
+    "id": 104,
+    "cn": "做 (Faire) - 现在时",
+    "type": "verb",
+    "conjugations": ["fais", "fais", "fait", "faisons", "faites", "font"]
+  },
+  {
+    "id": 105,
+    "cn": "想/要 (Vouloir) - 现在时",
+    "type": "verb",
+    "conjugations": ["veux", "veux", "veut", "voulons", "voulez", "veulent"]
+  },
+  {
+    "id": 106,
+    "cn": "能 (Pouvoir) - 现在时",
+    "type": "verb",
+    "conjugations": ["peux", "peux", "peut", "pouvons", "pouvez", "peuvent"]
+  },
+  {
+    "id": 107,
+    "cn": "必须 (Devoir) - 现在时",
+    "type": "verb",
+    "conjugations": ["dois", "dois", "doit", "devons", "devez", "doivent"]
+  },
+  {
+    "id": 108,
+    "cn": "知道 (Savoir) - 现在时",
+    "type": "verb",
+    "conjugations": ["sais", "sais", "sait", "savons", "savez", "savent"]
+  },
+  {
+    "id": 109,
+    "cn": "说 (Dire) - 现在时",
+    "type": "verb",
+    "conjugations": ["dis", "dis", "dit", "disons", "dites", "disent"]
+  },
+  {
+    "id": 110,
+    "cn": "来 (Venir) - 现在时",
+    "type": "verb",
+    "conjugations": ["viens", "viens", "vient", "venons", "venez", "viennent"]
+  },
+  {
+    "id": 111,
+    "cn": "看 (Voir) - 现在时",
+    "type": "verb",
+    "conjugations": ["vois", "vois", "voit", "voyons", "voyez", "voient"]
+  },
+  {
+    "id": 112,
+    "cn": "拿/吃 (Prendre) - 现在时",
+    "type": "verb",
+    "conjugations": ["prends", "prends", "prend", "prenons", "prenez", "prennent"]
+  },
+  {
+    "id": 113,
+    "cn": "放 (Mettre) - 现在时",
+    "type": "verb",
+    "conjugations": ["mets", "mets", "met", "mettons", "mettez", "mettent"]
+  },
+  {
+    "id": 114,
+    "cn": "认识 (Connaître) - 现在时",
+    "type": "verb",
+    "conjugations": ["connais", "connais", "connaît", "connaissons", "connaissez", "connaissent"]
+  },
+  {
+    "id": 115,
+    "cn": "相信 (Croire) - 现在时",
+    "type": "verb",
+    "conjugations": ["crois", "crois", "croit", "croyons", "croyez", "croient"]
+  },
+  {
+    "id": 116,
+    "cn": "喝 (Boire) - 现在时",
+    "type": "verb",
+    "conjugations": ["bois", "bois", "boit", "buvons", "buvez", "boivent"]
+  },
+  {
+    "id": 117,
+    "cn": "写 (Écrire) - 现在时",
+    "type": "verb",
+    "conjugations": ["écris", "écris", "écrit", "écrivons", "écrivez", "écrivent"]
+  },
+  {
+    "id": 118,
+    "cn": "阅读 (Lire) - 现在时",
+    "type": "verb",
+    "conjugations": ["lis", "lis", "lit", "lisons", "lisez", "lisent"]
+  },
+  {
+    "id": 119,
+    "cn": "出去 (Sortir) - 现在时",
+    "type": "verb",
+    "conjugations": ["sors", "sors", "sort", "sortons", "sortez", "sortent"]
+  },
+  {
+    "id": 120,
+    "cn": "觉得/闻 (Sentir) - 现在时",
+    "type": "verb",
+    "conjugations": ["sens", "sens", "sent", "sentons", "sentez", "sentent"]
+  },
+  {
+    "id": 121,
+    "cn": "收到 (Recevoir) - 现在时",
+    "type": "verb",
+    "conjugations": ["reçois", "reçois", "reçoit", "recevons", "recevez", "reçoivent"]
+  },
+  {
+    "id": 122,
+    "cn": "生活 (Vivre) - 现在时",
+    "type": "verb",
+    "conjugations": ["vis", "vis", "vit", "vivons", "vivez", "vivent"]
+  },
+  {
+    "id": 123,
+    "cn": "驾驶 (Conduire) - 现在时",
+    "type": "verb",
+    "conjugations": ["conduis", "conduis", "conduit", "conduisons", "conduisez", "conduisent"]
+  },
+  {
+    "id": 124,
+    "cn": "跟从 (Suivre) - 现在时",
+    "type": "verb",
+    "conjugations": ["suis", "suis", "suit", "suivons", "suivez", "suivent"]
+  },
+  {
+    "id": 125,
+    "cn": "开 (Ouvrir) - 现在时",
+    "type": "verb",
+    "conjugations": ["ouvre", "ouvres", "ouvre", "ouvrons", "ouvrez", "ouvrent"]
+  }
+
+]
