@@ -142,7 +142,7 @@
   {"id": 141, "cn": "圣母院", "fr": "Notre-Dame", "type": "word", "gender": "f"},
   {"id": 142, "cn": "巴黎", "fr": "Paris", "type": "word"},
   {"id": 143, "cn": "说话，交谈；讲（某种语言）", "fr": "parler", "type": "word"},
-  {"id": 144, "cn": "什么样的，哪一类的", "fr": "quel", "type": "word"},
+  {"id": 144, "cn": "什么样的，哪一类的", "fr": "quel", "type": "word", "gender": "m"},
   {"id": 145, "cn": "街，街道，马路", "fr": "rue", "type": "word", "gender": "f"},
   {"id": 146, "cn": "你好；再见", "fr": "salut", "type": "word"},
   {"id": 147, "cn": "他的，她的，它的", "fr": "son", "type": "word"},
@@ -151,6 +151,8 @@
   {"id": 150, "cn": "一个……，某……", "fr": "un", "type": "word", "gender": "m"},
   {"id": 151, "cn": "你们的，您的", "fr": "votre", "type": "word"},
   {"id": 152, "cn": "您，你们", "fr": "vous", "type": "word"}, 
+  {"id": 153, "cn": "朋友", "fr": "amie", "type": "word", "gender": "f"},
+  {"id": 154, "cn": "什么样的，哪一类的", "fr": "quelle", "type": "word", "gender": "f"},
   {
     "id": 101,
     "cn": "有 (Avoir) - 现在时",
