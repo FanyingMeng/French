@@ -153,6 +153,18 @@
   {"id": 152, "cn": "您，你们", "fr": "vous", "type": "word"}, 
   {"id": 153, "cn": "朋友", "fr": "amie", "type": "word", "gender": "f"},
   {"id": 154, "cn": "什么样的，哪一类的", "fr": "quelle", "type": "word", "gender": "f"},
+  {"id": 155, "cn": "夜晚", "fr": "nuit", "type": "word", "gender": "f"},
+  {"id": 156, "cn": "晚安", "fr": "bonne nuit", "type": "word"},
+  {"id": 157, "cn": "祝你愉快", "fr": "bonne journée", "type": "word"},
+  {"id": 158, "cn": "祝你晚上愉快", "fr": "bonne soirée", "type": "word"},
+  {"id": 159, "cn": "一路顺风", "fr": "bonne route", "type": "word"},
+  {"id": 160, "cn": "祝你这周愉快", "fr": "bonne semaine", "type": "word"},
+  {"id": 161, "cn": "号码", "fr": "numéro", "type": "word", "gender": "m"},
+  {"id": 162, "cn": "塔", "fr": "tour", "type": "word", "gender": "f"},
+  {"id": 163, "cn": "@", "fr": "arhobase", "type": "word", "gender": "f"},
+  {"id": 164, "cn": "点", "fr": "point", "type": "word", "gender": "m"},
+  {"id": 165, "cn": "学校", "fr": "école", "type": "word", "gender": "f"},
+  {"id": 166, "cn": "故事，历史", "fr": "histoire", "type": "word", "gender": "f"},
   {
     "id": 101,
     "cn": "有 (Avoir) - 现在时",
@@ -308,6 +320,30 @@
     "cn": "居住 (Habiter) - 现在时",
     "type": "verb",
     "conjugations": ["habite", "habites", "habite", "habitons", "habitez", "habitent"]
+  },
+  {
+    "id": 127,
+    "cn": "学习 (Étudier) - 现在时",
+    "type": "verb",
+    "conjugations": ["étudie", "étudies", "étudie", "étudions", "étudiez", "étudient"]
+  },
+  {
+    "id": 128,
+    "cn": "旅行 (Voyager) - 现在时",
+    "type": "verb",
+    "conjugations": ["voyage", "voyages", "voyage", "voyageons", "voyagez", "voyagent"]
+  },
+  {
+    "id": 129,
+    "cn": "听 (Écouter) - 现在时",
+    "type": "verb",
+    "conjugations": ["écoute", "écoutes", "écoute", "écoutons", "écoutez", "écoutent"]
+  },
+  {
+    "id": 130,
+    "cn": "说话 (Parler) - 现在时",
+    "type": "verb",
+    "conjugations": ["parle", "parles", "parle", "parlons", "parlez", "parlent"]
   }
 
 ]
