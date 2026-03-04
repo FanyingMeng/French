@@ -29,29 +29,20 @@ function buildQueue() {
     const progress = JSON.parse(localStorage.getItem('fr_progress') || '{}');
     const now = Date.now();
 
-    // 1. 计算每个单词的“优先级分数”
     let scoredWords = allWords.map(w => {
         let p = progress[w.id] || { stage: 0, wrongCount: 0, next: 0 };
         let score = 0;
-
         if (p.stage === 0) {
-            score = 1000; // 从未背过的最高优先级
+            score = 1000;
         } else {
-            // 错误次数权重：每错一次+10分
             score += (p.wrongCount || 0) * 10;
-            // 艾宾浩斯到期权重：如果到期了，增加优先级
             if (p.next <= now) score += 50;
         }
         return { ...w, score, ...p };
     });
 
-    // 2. 排序：分数高（新词和错题）的排在前面
     scoredWords.sort((a, b) => b.score - a.score);
-
-    // 3. 截取今日要练习的量
     queue = scoredWords.slice(0, dailyLimit);
-    
-    // 4. 洗牌：虽然有优先级，但组内随机乱序，防止死记位置
     queue.sort(() => Math.random() - 0.5);
     updateCount();
 }
@@ -59,14 +50,26 @@ function buildQueue() {
 function render() {
     if (queue.length === 0) {
         dom.cn.innerText = "今日打卡成功！🎉";
+        dom.cn.className = "word-cn gender-none"; // 重置颜色
         dom.wordArea.style.display = dom.verbArea.style.display = 'none';
         dom.finishArea.style.display = 'block';
         return;
     }
+    
     dom.finishArea.style.display = 'none';
     const current = queue[0];
     dom.cn.innerText = current.cn;
     dom.feedback.innerText = "";
+
+    // --- 颜色处理逻辑 ---
+    dom.cn.classList.remove('gender-m', 'gender-f', 'gender-none');
+    if (current.gender === 'm') {
+        dom.cn.classList.add('gender-m');
+    } else if (current.gender === 'f') {
+        dom.cn.classList.add('gender-f');
+    } else {
+        dom.cn.classList.add('gender-none');
+    }
 
     if (current.type === 'verb') {
         dom.wordArea.style.display = 'none';
@@ -123,7 +126,6 @@ function handleWrong(ansText) {
         showMsg(`${ansText}`, "error");
     }
     saveProgress(word.id, false);
-    // 错题延迟出现
     queue.splice(Math.min(3, queue.length), 0, word); 
     setTimeout(() => { render(); updateCount(); }, word.type === 'verb' ? 5000 : 2500);
 }
@@ -131,13 +133,8 @@ function handleWrong(ansText) {
 function saveProgress(id, isSuccess) {
     const data = JSON.parse(localStorage.getItem('fr_progress') || '{}');
     let p = data[id] || { stage: 0, wrongCount: 0 };
-    
-    if (isSuccess) {
-        p.stage = Math.min(p.stage + 1, INTERVALS.length - 1);
-    } else {
-        p.stage = 1;
-        p.wrongCount = (p.wrongCount || 0) + 1; // 增加错误计数
-    }
+    if (isSuccess) { p.stage = Math.min(p.stage + 1, INTERVALS.length - 1); } 
+    else { p.stage = 1; p.wrongCount = (p.wrongCount || 0) + 1; }
     p.next = Date.now() + INTERVALS[p.stage] * 60000;
     data[id] = p;
     localStorage.setItem('fr_progress', JSON.stringify(data));

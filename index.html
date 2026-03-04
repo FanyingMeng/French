@@ -5,21 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>法语艾宾浩斯默写 - 智能优先版</title>
     <style>
-        :root { --sb-green: #2ecc71; --sb-bg: #f8faf9; --sb-text: #333; --sb-red: #ff5e57; }
+        :root { --sb-green: #2ecc71; --sb-bg: #f8faf9; --sb-text: #333; --sb-red: #ff5e57; --sb-blue: #3498db; }
         body { font-family: -apple-system, sans-serif; background: var(--sb-bg); margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
         .card { background: white; width: 500px; padding: 40px; border-radius: 24px; box-shadow: 0 12px 40px rgba(0,0,0,0.06); text-align: center; position: relative; }
         .settings-btn { position: absolute; top: 20px; right: 20px; cursor: pointer; color: #ddd; font-size: 20px; }
         .header { font-size: 14px; color: #aaa; margin-bottom: 30px; }
         #count { color: var(--sb-green); font-weight: bold; }
-        .word-cn { font-size: 32px; font-weight: bold; color: var(--sb-text); margin-bottom: 40px; min-height: 45px; }
+        
+        /* 词性颜色控制 */
+        .word-cn { font-size: 32px; font-weight: bold; margin-bottom: 40px; min-height: 45px; transition: color 0.3s; }
+        .gender-m { color: var(--sb-blue); } /* 阳性蓝色 */
+        .gender-f { color: var(--sb-red); }  /* 阴性红色 */
+        .gender-none { color: var(--sb-text); } /* 默认颜色 */
+
         input { border: none; border-bottom: 2px solid #eee; padding: 10px 0; font-size: 26px; text-align: center; outline: none; transition: 0.3s; color: #2c3e50; width: 100%; }
         input:focus { border-bottom-color: var(--sb-green); }
         .verb-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 30px; margin-top: 10px; }
         .v-item { position: relative; text-align: left; }
         .v-label { font-size: 12px; color: #bbb; margin-bottom: 4px; font-weight: bold; }
         .v-input { font-size: 18px; padding: 5px 0; border-bottom: 1.5px solid #eee; text-align: left; }
-        .v-ans { font-size: 25px; color: var(--sb-red); margin-top: 5px; font-weight: 600; min-height: 15px; visibility: hidden; }
-        .feedback { margin-top: 25px; height: 24px; font-size: 25px; font-weight: 500; }
+        .v-ans { font-size: 15px; color: var(--sb-red); margin-top: 5px; font-weight: 600; min-height: 15px; visibility: hidden; }
+        .feedback { margin-top: 25px; height: 24px; font-size: 20px; font-weight: 500; }
         .success { color: var(--sb-green); }
         .error { color: var(--sb-red); }
         button { background: var(--sb-green); color: white; border: none; padding: 14px; width: 100%; border-radius: 12px; cursor: pointer; margin-top: 25px; font-size: 16px; font-weight: bold; transition: 0.2s; }
@@ -51,12 +57,12 @@
 
     <div id="verb-area" style="display: none;">
         <div class="verb-grid">
-            <div class="v-item"><div class="v-label">Je</div><input type="text" class="v-input"><div class="v-ans"></div></div>
-            <div class="v-item"><div class="v-label">Nous</div><input type="text" class="v-input"><div class="v-ans"></div></div>
-            <div class="v-item"><div class="v-label">Tu</div><input type="text" class="v-input"><div class="v-ans"></div></div>
-            <div class="v-item"><div class="v-label">Vous</div><input type="text" class="v-input"><div class="v-ans"></div></div>
-            <div class="v-item"><div class="v-label">Il/Elle</div><input type="text" class="v-input"><div class="v-ans"></div></div>
-            <div class="v-item"><div class="v-label">Ils/Elles</div><input type="text" class="v-input"><div class="v-ans"></div></div>
+            <div class="v-item"><div class="v-label">Je</div><input type="text" class="v-input"> <div class="v-ans"></div></div>
+            <div class="v-item"><div class="v-label">Nous</div><input type="text" class="v-input"> <div class="v-ans"></div></div>
+            <div class="v-item"><div class="v-label">Tu</div><input type="text" class="v-input"> <div class="v-ans"></div></div>
+            <div class="v-item"><div class="v-label">Vous</div><input type="text" class="v-input"> <div class="v-ans"></div></div>
+            <div class="v-item"><div class="v-label">Il/Elle</div><input type="text" class="v-input"> <div class="v-ans"></div></div>
+            <div class="v-item"><div class="v-label">Ils/Elles</div><input type="text" class="v-input"> <div class="v-ans"></div></div>
         </div>
         <button onclick="checkVerb()">提交检查</button>
     </div>
