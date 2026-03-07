@@ -232,7 +232,7 @@
 {"id": 231, "cn": "书，书本，书籍", "fr": "livre", "type": "word", "gender": "m"},
 {"id": 232, "cn": "墙，壁", "fr": "mur", "type": "word", "gender": "m"},
 {"id": 233, "cn": "物，物体；物品，东西", "fr": "objet", "type": "word", "gender": "m"},
-{"id": 234, "cn": "啊！哦！呦！哎呀！", "fr": "oh", "type": "word"},
+{"id": 234, "cn": "邻居", "fr": "voisin", "type": "word", "gender": "m"},
 {"id": 235, "cn": "电脑", "fr": "ordinateur", "type": "word", "gender": "m"},
 {"id": 236, "cn": "什么", "fr": "que", "type": "word"},
 {"id": 237, "cn": "包", "fr": "sac", "type": "word", "gender": "m"},
