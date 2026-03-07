@@ -161,7 +161,7 @@
   {"id": 160, "cn": "祝你这周愉快", "fr": "bonne semaine", "type": "word"},
   {"id": 161, "cn": "号码", "fr": "numéro", "type": "word", "gender": "m"},
   {"id": 162, "cn": "塔", "fr": "tour", "type": "word", "gender": "f"},
-  {"id": 163, "cn": "@", "fr": "arhobase", "type": "word", "gender": "f"},
+  {"id": 163, "cn": "@", "fr": "arobase", "type": "word", "gender": "f"},
   {"id": 164, "cn": "点", "fr": "point", "type": "word", "gender": "m"},
   {"id": 165, "cn": "学校", "fr": "école", "type": "word", "gender": "f"},
   {"id": 166, "cn": "故事，历史", "fr": "histoire", "type": "word", "gender": "f"},
