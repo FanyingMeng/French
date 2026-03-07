@@ -823,5 +823,8 @@
 {"id": 764, "cn": "我们工作", "fr": "nous travaillons", "type": "word"},
 {"id": 765, "cn": "你们工作", "fr": "vous travaillez", "type": "word"},
 {"id": 766, "cn": "他们工作", "fr": "ils travaillent", "type": "word"},
-{"id": 767, "cn": "她们工作", "fr": "elles travaillent", "type": "word"}
+{"id": 767, "cn": "她们工作", "fr": "elles travaillent", "type": "word"},
+
+{"id": 768, "cn": "什么", "fr": "Qu'est-ce que", "type": "word"},
+{"id": 769, "cn": "什么(宾格,口语)", "fr": "quoi", "type": "word"}
 ]
