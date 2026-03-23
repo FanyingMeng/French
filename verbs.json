@@ -1318,5 +1318,13 @@
 {"id":1317,"cn":"我们回家","fr":"nous rentrons","gender":"none"},
 {"id":1318,"cn":"你们回家","fr":"vous rentrez","gender":"none"},
 {"id":1319,"cn":"他们回家","fr":"ils rentrent","gender":"none"},
-{"id":1320,"cn":"她们回家","fr":"elles rentrent","gender":"none"}
+{"id":1320,"cn":"她们回家","fr":"elles rentrent","gender":"none"},
+{"id":1321,"cn":"我买","fr":"j'achète","gender":"none"},
+{"id":1322,"cn":"你买","fr":"tu achètes","gender":"none"},
+{"id":1323,"cn":"他买","fr":"il achète","gender":"none"},
+{"id":1324,"cn":"她买","fr":"elle achète","gender":"none"},
+{"id":1325,"cn":"我们买","fr":"nous achetons","gender":"none"},
+{"id":1326,"cn":"你们买","fr":"vous achetez","gender":"none"},
+{"id":1327,"cn":"他们买","fr":"ils achètent","gender":"none"},
+{"id":1328,"cn":"她们买","fr":"elles achètent","gender":"none"}
 ]
