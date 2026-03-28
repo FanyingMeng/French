@@ -1326,5 +1326,21 @@
 {"id":1325,"cn":"我们买","fr":"nous achetons","gender":"none"},
 {"id":1326,"cn":"你们买","fr":"vous achetez","gender":"none"},
 {"id":1327,"cn":"他们买","fr":"ils achètent","gender":"none"},
-{"id":1328,"cn":"她们买","fr":"elles achètent","gender":"none"}
+{"id":1328,"cn":"她们买","fr":"elles achètent","gender":"none"},
+{"id":1329,"cn":"我吸烟","fr":"je fume","gender":"none"},
+{"id":1330,"cn":"你吸烟","fr":"tu fumes","gender":"none"},
+{"id":1331,"cn":"他吸烟","fr":"il fume","gender":"none"},
+{"id":1332,"cn":"她吸烟","fr":"elle fume","gender":"none"},
+{"id":1333,"cn":"我们吸烟","fr":"nous fumons","gender":"none"},
+{"id":1334,"cn":"你们吸烟","fr":"vous fumez","gender":"none"},
+{"id":1335,"cn":"他们吸烟","fr":"ils fument","gender":"none"},
+{"id":1336,"cn":"她们吸烟","fr":"elles fument","gender":"none"},
+{"id":1337,"cn":"我使用","fr":"j'utilise","gender":"none"},
+{"id":1338,"cn":"你使用","fr":"tu utilises","gender":"none"},
+{"id":1339,"cn":"他使用","fr":"il utilise","gender":"none"},
+{"id":1340,"cn":"她使用","fr":"elle utilise","gender":"none"},
+{"id":1341,"cn":"我们使用","fr":"nous utilisons","gender":"none"},
+{"id":1342,"cn":"你们使用","fr":"vous utilisez","gender":"none"},
+{"id":1343,"cn":"他们使用","fr":"ils utilisent","gender":"none"},
+{"id":1344,"cn":"她们使用","fr":"elles utilisent","gender":"none"}
 ]
