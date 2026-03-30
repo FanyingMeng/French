@@ -91,6 +91,11 @@ dom.singleInp.onkeypress = (e) => {
 };
 
 async function startApp(mode) {
+    // --- 新增：强制清理输入框干扰 ---
+    dom.singleInp.setAttribute('autocomplete', 'one-time-code'); // 这是一个高级技巧：伪装成验证码，浏览器绝对不会提示历史记录
+    dom.singleInp.setAttribute('spellcheck', 'false');           // 禁用红色拼写错误波浪线
+    dom.singleInp.setAttribute('autocorrect', 'off');            // 禁用 Mac/iOS 自动纠错
+    // ----------------------------
     currentMode = mode;
     const fileName = (mode === 'verb') ? 'verbs.json' : 'words.json';
     const limitKey = `fr_limit_${mode}`;
