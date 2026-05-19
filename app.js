@@ -1,5 +1,5 @@
 /**
- * 法语艾宾浩斯默写 - 最终强化版（无bug稳定版）
+ * 法语艾宾浩斯默写 - 自动跳题最终版
  */
 
 const INTERVALS = [0, 5, 30, 720, 1440, 2880, 5760, 10080];
@@ -10,10 +10,10 @@ let wrongBuffer = [];
 let recentWords = [];
 let currentMode = null;
 
-let waitingNext = false;      // 等待进入下一题
-let forceCorrectMode = false; // 必须拼对模式
-let currentAnswer = "";       // 正确答案
-let currentWord = null;       // 🔥 当前显示单词（修复bug关键）
+let waitingNext = false;
+let forceCorrectMode = false;
+let currentAnswer = "";
+let currentWord = null;
 
 const dom = {
     cn: document.getElementById('display-cn'),
@@ -83,25 +83,22 @@ dom.singleInp.onkeypress = (e) => {
     // 🔥 强制拼写模式
     if (forceCorrectMode) {
         if (input === currentAnswer) {
-            showMsg("✔ 正确，按回车继续", "success");
+            showMsg("✔ 正确", "success");
             forceCorrectMode = false;
-            waitingNext = true;
+
+            // 👉 修复后也自动下一题
+            setTimeout(() => {
+                refillWrong();
+                render();
+                updateCount();
+            }, 500);
+
         } else {
             showMsg("❌ 还不对，再试一次", "error");
         }
         return;
     }
 
-    // 👉 下一题阶段
-    if (waitingNext) {
-        waitingNext = false;
-        refillWrong();
-        render();
-        updateCount();
-        return;
-    }
-
-    // 👉 正常判定
     const correct = currentWord.fr.toLowerCase();
     currentAnswer = correct;
 
@@ -116,9 +113,8 @@ dom.singleInp.onkeypress = (e) => {
 
 // --- 启动 ---
 async function startApp(mode) {
-    dom.singleInp.setAttribute('autocomplete', 'one-time-code');
+    dom.singleInp.setAttribute('autocomplete', 'off');
     dom.singleInp.setAttribute('spellcheck', 'false');
-    dom.singleInp.setAttribute('autocorrect', 'off');
 
     currentMode = mode;
 
@@ -168,7 +164,7 @@ function render() {
     refillWrong();
 
     const current = queue[0];
-    currentWord = current; // 🔥 核心修复
+    currentWord = current;
 
     dom.cn.innerText = current.cn;
     dom.feedback.innerText = "";
@@ -181,25 +177,29 @@ function render() {
     if (recentWords.length > 5) recentWords.shift();
 }
 
-// --- 正确 ---
+// --- 正确（🔥已改自动跳题） ---
 function handleCorrect() {
     const item = queue.shift();
 
     if (item.retry && item.retry > 0) {
         item.retry--;
+
         if (item.retry > 0) {
             showMsg("再正确一次 ✔", "success");
             wrongBuffer.push(item);
-        } else {
-            showMsg("Très bien !（按回车继续）", "success");
-            saveProgress(item.id, true);
+            return;
         }
-    } else {
-        showMsg("Très bien !（按回车继续）", "success");
-        saveProgress(item.id, true);
     }
 
-    waitingNext = true;
+    showMsg("Très bien !", "success");
+    saveProgress(item.id, true);
+
+    // 🔥 自动下一题
+    setTimeout(() => {
+        refillWrong();
+        render();
+        updateCount();
+    }, 500);
 }
 
 // --- 错误 ---
@@ -230,7 +230,7 @@ function refillWrong() {
     }
 }
 
-// --- 保存进度 ---
+// --- 保存 ---
 function saveProgress(id, success) {
     const key = `fr_progress_${currentMode}`;
     const data = JSON.parse(localStorage.getItem(key) || '{}');
@@ -260,7 +260,7 @@ function updateCount() {
     dom.count.innerText = queue.length + wrongBuffer.length;
 }
 
-// 🔥 点击朗读（已修复）
+// 🔊 点击朗读（已修复）
 dom.cn.onclick = () => {
     if (currentWord) speak(currentWord.fr);
 };
