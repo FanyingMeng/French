@@ -91,7 +91,7 @@ dom.singleInp.onkeypress = (e) => {
                 refillWrong();
                 render();
                 updateCount();
-            }, 500);
+            }, 1200);
 
         } else {
             showMsg("❌ 还不对，再试一次", "error");
