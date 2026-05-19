@@ -199,7 +199,7 @@ function handleCorrect() {
         refillWrong();
         render();
         updateCount();
-    }, 500);
+    }, 1200);
 }
 
 // --- 错误 ---
