@@ -1,5 +1,5 @@
 /**
- * 法语艾宾浩斯默写 - 强化记忆版（必须拼写正确才能过）
+ * 法语艾宾浩斯默写 - 最终强化版（无bug稳定版）
  */
 
 const INTERVALS = [0, 5, 30, 720, 1440, 2880, 5760, 10080];
@@ -10,9 +10,10 @@ let wrongBuffer = [];
 let recentWords = [];
 let currentMode = null;
 
-let waitingNext = false;     // 等待进入下一题
-let forceCorrectMode = false; // 🔥 是否强制必须拼对
-let currentAnswer = "";      // 当前正确答案
+let waitingNext = false;      // 等待进入下一题
+let forceCorrectMode = false; // 必须拼对模式
+let currentAnswer = "";       // 正确答案
+let currentWord = null;       // 🔥 当前显示单词（修复bug关键）
 
 const dom = {
     cn: document.getElementById('display-cn'),
@@ -28,22 +29,22 @@ const dom = {
 // --- 发音 ---
 async function speak(text) {
     if (!text) return;
-    const word = text.trim().toLowerCase();
 
-    const wrUrl = `https://www.wordreference.com/audio/fr/fr/v1/${encodeURIComponent(word)}.mp3`;
+    const word = text.trim().toLowerCase();
+    const url = `https://www.wordreference.com/audio/fr/fr/v1/${encodeURIComponent(word)}.mp3`;
 
     if (window.currentAudio) {
         window.currentAudio.pause();
         window.currentAudio = null;
     }
 
-    window.currentAudio = new Audio(wrUrl);
+    window.currentAudio = new Audio(url);
 
     try {
         const playPromise = window.currentAudio.play();
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject('timeout'), 800));
-        await Promise.race([playPromise, timeoutPromise]);
-    } catch (e) {
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(), 800));
+        await Promise.race([playPromise, timeout]);
+    } catch {
         fallbackToMacFrench(text);
     }
 }
@@ -52,18 +53,20 @@ function fallbackToMacFrench(text) {
     if (!window.speechSynthesis) return;
 
     window.speechSynthesis.cancel();
+
     const msg = new SpeechSynthesisUtterance(text);
     msg.lang = 'fr-FR';
 
     const voices = window.speechSynthesis.getVoices();
     const frVoices = voices.filter(v => v.lang.startsWith('fr'));
 
-    const bestVoice = frVoices.find(v => v.name.includes('Siri')) ||
-                     frVoices.find(v => v.name.includes('Thomas')) ||
-                     frVoices.find(v => v.name.includes('Audrey')) ||
-                     frVoices[0];
+    const best =
+        frVoices.find(v => v.name.includes('Siri')) ||
+        frVoices.find(v => v.name.includes('Thomas')) ||
+        frVoices.find(v => v.name.includes('Audrey')) ||
+        frVoices[0];
 
-    if (bestVoice) msg.voice = bestVoice;
+    if (best) msg.voice = best;
 
     msg.rate = 0.9;
     window.speechSynthesis.speak(msg);
@@ -71,16 +74,16 @@ function fallbackToMacFrench(text) {
 
 window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
 
-// --- 🔥 Enter控制 ---
+// --- Enter 控制 ---
 dom.singleInp.onkeypress = (e) => {
     if (e.key !== 'Enter') return;
 
     const input = dom.singleInp.value.trim().toLowerCase();
 
-    // 🔥 强制拼写模式（答错后）
+    // 🔥 强制拼写模式
     if (forceCorrectMode) {
         if (input === currentAnswer) {
-            showMsg("✔ 正确，继续", "success");
+            showMsg("✔ 正确，按回车继续", "success");
             forceCorrectMode = false;
             waitingNext = true;
         } else {
@@ -89,7 +92,7 @@ dom.singleInp.onkeypress = (e) => {
         return;
     }
 
-    // 👉 等待进入下一题
+    // 👉 下一题阶段
     if (waitingNext) {
         waitingNext = false;
         refillWrong();
@@ -98,7 +101,8 @@ dom.singleInp.onkeypress = (e) => {
         return;
     }
 
-    const correct = queue[0].fr.toLowerCase();
+    // 👉 正常判定
+    const correct = currentWord.fr.toLowerCase();
     currentAnswer = correct;
 
     speak(correct);
@@ -117,23 +121,26 @@ async function startApp(mode) {
     dom.singleInp.setAttribute('autocorrect', 'off');
 
     currentMode = mode;
+
     const fileName = (mode === 'verb') ? 'verbs.json' : 'words.json';
     const limitKey = `fr_limit_${mode}`;
     const dailyLimit = parseInt(localStorage.getItem(limitKey)) || 10;
+
     dom.limitInp.value = dailyLimit;
 
     const res = await fetch(fileName);
     currentData = await res.json();
 
     dom.modeOverlay.style.display = 'none';
+
     buildQueue(dailyLimit);
     render();
 }
 
 // --- 队列 ---
 function buildQueue(limit) {
-    const progressKey = `fr_progress_${currentMode}`;
-    const progress = JSON.parse(localStorage.getItem(progressKey) || '{}');
+    const key = `fr_progress_${currentMode}`;
+    const progress = JSON.parse(localStorage.getItem(key) || '{}');
     const now = Date.now();
 
     let scored = currentData.map(item => {
@@ -149,6 +156,7 @@ function buildQueue(limit) {
     updateCount();
 }
 
+// --- 渲染 ---
 function render() {
     if (queue.length === 0 && wrongBuffer.length === 0) {
         dom.cn.innerText = "今日任务达成！🎉";
@@ -160,8 +168,11 @@ function render() {
     refillWrong();
 
     const current = queue[0];
+    currentWord = current; // 🔥 核心修复
+
     dom.cn.innerText = current.cn;
     dom.feedback.innerText = "";
+    dom.cn.className = `word-cn gender-${current.gender || 'none'}`;
 
     dom.singleInp.value = "";
     dom.singleInp.focus();
@@ -170,7 +181,7 @@ function render() {
     if (recentWords.length > 5) recentWords.shift();
 }
 
-// --- ✅ 正确 ---
+// --- 正确 ---
 function handleCorrect() {
     const item = queue.shift();
 
@@ -191,7 +202,7 @@ function handleCorrect() {
     waitingNext = true;
 }
 
-// --- ❌ 错误 ---
+// --- 错误 ---
 function handleWrong(ans) {
     const item = queue.shift();
 
@@ -201,22 +212,25 @@ function handleWrong(ans) {
 
     showMsg(`正确答案: ${ans}（请重新输入）`, "error");
 
-    // 🔥 开启强制拼写模式
     forceCorrectMode = true;
 }
 
-// --- 其他 ---
+// --- 错词回流 ---
 function refillWrong() {
     if (wrongBuffer.length === 0) return;
+
     if (queue.length <= 3) {
         let index = wrongBuffer.findIndex(i => !recentWords.includes(i.id));
         if (index === -1) index = 0;
+
         const item = wrongBuffer.splice(index, 1)[0];
         const pos = Math.min(3, queue.length);
+
         queue.splice(pos, 0, item);
     }
 }
 
+// --- 保存进度 ---
 function saveProgress(id, success) {
     const key = `fr_progress_${currentMode}`;
     const data = JSON.parse(localStorage.getItem(key) || '{}');
@@ -231,11 +245,12 @@ function saveProgress(id, success) {
     }
 
     p.next = Date.now() + INTERVALS[p.stage] * 60000;
-    data[id] = p;
 
+    data[id] = p;
     localStorage.setItem(key, JSON.stringify(data));
 }
 
+// --- UI ---
 function showMsg(t, c) {
     dom.feedback.innerText = t;
     dom.feedback.className = `feedback ${c}`;
@@ -245,6 +260,7 @@ function updateCount() {
     dom.count.innerText = queue.length + wrongBuffer.length;
 }
 
+// 🔥 点击朗读（已修复）
 dom.cn.onclick = () => {
-    if (queue.length > 0) speak(queue[0].fr);
+    if (currentWord) speak(currentWord.fr);
 };
