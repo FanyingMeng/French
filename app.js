@@ -251,6 +251,8 @@ dom.singleInp.onkeypress = (e) => {
             }, NEXT_DELAY); // ⭐ 统一
         } else {
             showMsg("❌ 再试一次", "error");
+            dom.singleInp.value = "";
+            dom.singleInp.focus(); 
         }
         return;
     }
