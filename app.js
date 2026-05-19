@@ -1,20 +1,20 @@
 /**
- * 法语艾宾浩斯默写 - 自动跳题最终版
+ * 法语记忆系统 - FSRS 2.0（统一节奏版 1200ms）
  */
-
-const INTERVALS = [0, 5, 30, 720, 1440, 2880, 5760, 10080];
 
 let currentData = [];
 let queue = [];
 let wrongBuffer = [];
 let recentWords = [];
-let currentMode = null;
 
-let waitingNext = false;
-let forceCorrectMode = false;
-let currentAnswer = "";
+let currentMode = null;
 let currentWord = null;
 
+let forceCorrectMode = false;
+
+const NEXT_DELAY = 1200; // ⭐ 全局统一节奏
+
+// ---------------- DOM ----------------
 const dom = {
     cn: document.getElementById('display-cn'),
     singleInp: document.getElementById('single-input'),
@@ -26,7 +26,7 @@ const dom = {
     modeOverlay: document.getElementById('mode-overlay')
 };
 
-// --- 发音 ---
+// ---------------- 发音 ----------------
 async function speak(text) {
     if (!text) return;
 
@@ -35,21 +35,20 @@ async function speak(text) {
 
     if (window.currentAudio) {
         window.currentAudio.pause();
-        window.currentAudio = null;
     }
 
     window.currentAudio = new Audio(url);
 
     try {
         const playPromise = window.currentAudio.play();
-        const timeout = new Promise((_, reject) => setTimeout(() => reject(), 800));
+        const timeout = new Promise((_, reject) => setTimeout(reject, 800));
         await Promise.race([playPromise, timeout]);
     } catch {
-        fallbackToMacFrench(text);
+        fallbackTTS(text);
     }
 }
 
-function fallbackToMacFrench(text) {
+function fallbackTTS(text) {
     if (!window.speechSynthesis) return;
 
     window.speechSynthesis.cancel();
@@ -60,162 +59,159 @@ function fallbackToMacFrench(text) {
     const voices = window.speechSynthesis.getVoices();
     const frVoices = voices.filter(v => v.lang.startsWith('fr'));
 
-    const best =
+    msg.voice =
         frVoices.find(v => v.name.includes('Siri')) ||
-        frVoices.find(v => v.name.includes('Thomas')) ||
-        frVoices.find(v => v.name.includes('Audrey')) ||
         frVoices[0];
-
-    if (best) msg.voice = best;
 
     msg.rate = 0.9;
     window.speechSynthesis.speak(msg);
 }
 
-window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+// ---------------- FSRS 2.0 ----------------
+function fsrsUpdate(p, grade) {
+    const now = Date.now();
 
-// --- Enter 控制 ---
-dom.singleInp.onkeypress = (e) => {
-    if (e.key !== 'Enter') return;
+    const daysSince = p.due
+        ? (now - p.due) / (1000 * 60 * 60 * 24)
+        : 1;
 
-    const input = dom.singleInp.value.trim().toLowerCase();
+    p.retrievability = Math.exp(-daysSince / (p.stability || 1));
 
-    // 🔥 强制拼写模式
-    if (forceCorrectMode) {
-        if (input === currentAnswer) {
-            showMsg("✔ 正确", "success");
-            forceCorrectMode = false;
-
-            // 👉 修复后也自动下一题
-            setTimeout(() => {
-                refillWrong();
-                render();
-                updateCount();
-            }, 1200);
-
-        } else {
-            showMsg("❌ 还不对，再试一次", "error");
-        }
-        return;
-    }
-
-    const correct = currentWord.fr.toLowerCase();
-    currentAnswer = correct;
-
-    speak(correct);
-
-    if (input === correct) {
-        handleCorrect();
+    if (grade === 3) {
+        p.stability *= 1.3;
+        p.difficulty = Math.max(1, p.difficulty - 0.3);
+    } else if (grade === 2) {
+        p.stability *= 1.05;
+    } else if (grade === 1) {
+        p.stability *= 0.7;
+        p.difficulty += 0.5;
     } else {
-        handleWrong(correct);
+        p.stability *= 0.4;
+        p.lapses++;
     }
-};
 
-// --- 启动 ---
-async function startApp(mode) {
-    dom.singleInp.setAttribute('autocomplete', 'off');
-    dom.singleInp.setAttribute('spellcheck', 'false');
+    p.stability = Math.max(0.2, Math.min(p.stability, 30));
+    p.difficulty = Math.max(1, Math.min(p.difficulty, 10));
 
-    currentMode = mode;
+    p.interval = Math.max(
+        0.5,
+        p.stability * (1 + (10 - p.difficulty) / 10)
+    );
 
-    const fileName = (mode === 'verb') ? 'verbs.json' : 'words.json';
-    const limitKey = `fr_limit_${mode}`;
-    const dailyLimit = parseInt(localStorage.getItem(limitKey)) || 10;
+    p.due = now + p.interval * 24 * 60 * 60 * 1000;
 
-    dom.limitInp.value = dailyLimit;
-
-    const res = await fetch(fileName);
-    currentData = await res.json();
-
-    dom.modeOverlay.style.display = 'none';
-
-    buildQueue(dailyLimit);
-    render();
+    p.reps++;
+    return p;
 }
 
-// --- 队列 ---
+// ---------------- 保存 ----------------
+function saveProgress(id, success) {
+    const key = `fr_progress_${currentMode}`;
+    const data = JSON.parse(localStorage.getItem(key) || '{}');
+
+    let p = data[id] || {
+        stability: 0.5,
+        difficulty: 5,
+        retrievability: 1,
+        interval: 0.5,
+        due: 0,
+        lapses: 0,
+        reps: 0
+    };
+
+    const grade = success ? 3 : 0;
+    p = fsrsUpdate(p, grade);
+
+    data[id] = p;
+    localStorage.setItem(key, JSON.stringify(data));
+}
+
+// ---------------- 队列 ----------------
 function buildQueue(limit) {
     const key = `fr_progress_${currentMode}`;
     const progress = JSON.parse(localStorage.getItem(key) || '{}');
     const now = Date.now();
 
     let scored = currentData.map(item => {
-        let p = progress[item.id] || { stage: 0, wrongCount: 0, next: 0 };
-        let score = (p.stage === 0) ? 1000 : (p.wrongCount * 10 + (p.next <= now ? 50 : 0));
+        let p = progress[item.id] || {
+            stability: 0.5,
+            difficulty: 5,
+            retrievability: 1,
+            interval: 0.5,
+            due: 0
+        };
+
+        const overdue = Math.max(0, now - p.due);
+        const overdueFactor = overdue > 0 ? 200 : 0;
+
+        const score =
+            overdueFactor +
+            (1 - p.retrievability) * 80 +
+            p.difficulty * 10 +
+            (1 / (p.stability + 0.1)) * 30;
+
         return { ...item, ...p, score };
     });
 
     scored.sort((a, b) => b.score - a.score);
+
     queue = scored.slice(0, limit);
     queue.sort(() => Math.random() - 0.5);
 
     updateCount();
 }
 
-// --- 渲染 ---
+// ---------------- 渲染 ----------------
 function render() {
     if (queue.length === 0 && wrongBuffer.length === 0) {
         dom.cn.innerText = "今日任务达成！🎉";
-        dom.singleInp.style.display = 'none';
-        dom.finishArea.style.display = 'block';
+        dom.singleInp.style.display = "none";
+        dom.finishArea.style.display = "block";
         return;
     }
 
     refillWrong();
 
-    const current = queue[0];
-    currentWord = current;
+    currentWord = queue[0];
 
-    dom.cn.innerText = current.cn;
+    dom.cn.innerText = currentWord.cn;
     dom.feedback.innerText = "";
-    dom.cn.className = `word-cn gender-${current.gender || 'none'}`;
+    dom.cn.className = `word-cn gender-${currentWord.gender || 'none'}`;
 
     dom.singleInp.value = "";
     dom.singleInp.focus();
 
-    recentWords.push(current.id);
+    recentWords.push(currentWord.id);
     if (recentWords.length > 5) recentWords.shift();
 }
 
-// --- 正确（🔥已改自动跳题） ---
+// ---------------- 正确 ----------------
 function handleCorrect() {
     const item = queue.shift();
-
-    if (item.retry && item.retry > 0) {
-        item.retry--;
-
-        if (item.retry > 0) {
-            showMsg("再正确一次 ✔", "success");
-            wrongBuffer.push(item);
-            return;
-        }
-    }
 
     showMsg("Très bien !", "success");
     saveProgress(item.id, true);
 
-    // 🔥 自动下一题
     setTimeout(() => {
-        refillWrong();
         render();
         updateCount();
-    }, 1200);
+    }, NEXT_DELAY); // ⭐ 统一
 }
 
-// --- 错误 ---
-function handleWrong(ans) {
+// ---------------- 错误 ----------------
+function handleWrong(correct) {
     const item = queue.shift();
 
     saveProgress(item.id, false);
-    item.retry = 2;
+
     wrongBuffer.push(item);
 
-    showMsg(`正确答案: ${ans}（请重新输入）`, "error");
+    showMsg(`正确答案: ${correct}`, "error");
 
     forceCorrectMode = true;
 }
 
-// --- 错词回流 ---
+// ---------------- 错词回流 ----------------
 function refillWrong() {
     if (wrongBuffer.length === 0) return;
 
@@ -224,43 +220,117 @@ function refillWrong() {
         if (index === -1) index = 0;
 
         const item = wrongBuffer.splice(index, 1)[0];
-        const pos = Math.min(3, queue.length);
-
-        queue.splice(pos, 0, item);
+        queue.splice(Math.min(3, queue.length), 0, item);
     }
 }
 
-// --- 保存 ---
-function saveProgress(id, success) {
-    const key = `fr_progress_${currentMode}`;
-    const data = JSON.parse(localStorage.getItem(key) || '{}');
+// ---------------- 输入 ----------------
+dom.singleInp.onkeypress = (e) => {
+    if (e.key !== "Enter") return;
 
-    let p = data[id] || { stage: 0, wrongCount: 0 };
+    const input = dom.singleInp.value.trim().toLowerCase();
 
-    if (success) {
-        p.stage = Math.min(p.stage + 1, INTERVALS.length - 1);
+    if (!currentWord) return;
+
+    const correct = currentWord.fr.toLowerCase();
+
+    speak(correct);
+
+    // ⭐ 强制订正模式
+    if (forceCorrectMode) {
+        if (input === correct) {
+            showMsg("✔ 正确", "success");
+            forceCorrectMode = false;
+
+            saveProgress(currentWord.id, true);
+            queue.shift();
+
+            setTimeout(() => {
+                render();
+                updateCount();
+            }, NEXT_DELAY); // ⭐ 统一
+        } else {
+            showMsg("❌ 再试一次", "error");
+        }
+        return;
+    }
+
+    if (input === correct) {
+        handleCorrect();
     } else {
-        p.stage = 1;
-        p.wrongCount = (p.wrongCount || 0) + 1;
+        handleWrong(correct);
     }
+};
 
-    p.next = Date.now() + INTERVALS[p.stage] * 60000;
+// ---------------- 启动 ----------------
+async function startApp(mode) {
+    currentMode = mode;
 
-    data[id] = p;
-    localStorage.setItem(key, JSON.stringify(data));
+    const fileName = mode === "verb" ? "verbs.json" : "words.json";
+
+    const limitKey = `fr_limit_${mode}`;
+    const limit = parseInt(localStorage.getItem(limitKey)) || 10;
+
+    dom.limitInp.value = limit;
+
+    const res = await fetch(fileName);
+    currentData = await res.json();
+
+    dom.modeOverlay.style.display = "none";
+
+    buildQueue(limit);
+    render();
 }
 
-// --- UI ---
-function showMsg(t, c) {
-    dom.feedback.innerText = t;
-    dom.feedback.className = `feedback ${c}`;
+// ---------------- UI ----------------
+function showMsg(text, type) {
+    dom.feedback.innerText = text;
+    dom.feedback.className = `feedback ${type}`;
 }
 
 function updateCount() {
     dom.count.innerText = queue.length + wrongBuffer.length;
 }
 
-// 🔊 点击朗读（已修复）
+// ---------------- 设置 ----------------
+function openSettings() {
+    if (!currentMode) return;
+    dom.modal.style.display = "block";
+}
+
+function closeSettings() {
+    dom.modal.style.display = "none";
+}
+
+function saveSettings() {
+    const val = parseInt(dom.limitInp.value) || 10;
+
+    localStorage.setItem(`fr_limit_${currentMode}`, val);
+
+    buildQueue(val);
+    render();
+
+    closeSettings();
+}
+
+function clearCurrentProgress() {
+    localStorage.removeItem(`fr_progress_${currentMode}`);
+
+    showMsg("已重置进度", "success");
+
+    buildQueue(parseInt(dom.limitInp.value) || 10);
+    render();
+
+    closeSettings();
+}
+
+// ---------------- 点击发音 ----------------
 dom.cn.onclick = () => {
     if (currentWord) speak(currentWord.fr);
 };
+
+// ---------------- 暴露 ----------------
+window.startApp = startApp;
+window.openSettings = openSettings;
+window.saveSettings = saveSettings;
+window.clearCurrentProgress = clearCurrentProgress;
