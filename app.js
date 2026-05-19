@@ -1,5 +1,5 @@
 /**
- * 法语记忆系统 - FSRS 2.0（统一节奏版 1200ms）
+ * 法语记忆系统 - FSRS 2.0（稳定防炸版）
  */
 
 let currentData = [];
@@ -12,7 +12,7 @@ let currentWord = null;
 
 let forceCorrectMode = false;
 
-const NEXT_DELAY = 1200; // ⭐ 全局统一节奏
+const NEXT_DELAY = 1200;
 
 // ---------------- DOM ----------------
 const dom = {
@@ -25,6 +25,39 @@ const dom = {
     finishArea: document.getElementById('finish-area'),
     modeOverlay: document.getElementById('mode-overlay')
 };
+
+// =======================================================
+// 🧠 数据防炸层（新增核心）
+// =======================================================
+
+function sanitizeProgress(progress = {}) {
+    const clean = {};
+
+    for (const id in progress) {
+        const p = progress[id];
+        if (!p) continue;
+
+        clean[id] = {
+            stability: Number(p.stability) || 0.5,
+            difficulty: Number(p.difficulty) || 5,
+            retrievability: Number(p.retrievability) || 1,
+            interval: Number(p.interval) || 0.5,
+            due: Number(p.due) || 0,
+            lapses: Number(p.lapses) || 0,
+            reps: Number(p.reps) || 0,
+
+            firstWrong: Boolean(p.firstWrong),
+            correctCount: Number(p.correctCount) || 0
+        };
+    }
+
+    return clean;
+}
+
+function safeSetProgress(key, data) {
+    const cleaned = sanitizeProgress(data);
+    localStorage.setItem(key, JSON.stringify(cleaned));
+}
 
 // ---------------- 发音 ----------------
 async function speak(text) {
@@ -67,7 +100,7 @@ function fallbackTTS(text) {
     window.speechSynthesis.speak(msg);
 }
 
-// ---------------- FSRS 2.0 ----------------
+// ---------------- FSRS（完全不改） ----------------
 function fsrsUpdate(p, grade) {
     const now = Date.now();
 
@@ -104,10 +137,10 @@ function fsrsUpdate(p, grade) {
     return p;
 }
 
-// ---------------- 保存 ----------------
-function saveProgress(id, success) {
+// ---------------- 保存（稳定版） ----------------
+function saveProgress(id, success, fromForce = false) {
     const key = `fr_progress_${currentMode}`;
-    const data = JSON.parse(localStorage.getItem(key) || '{}');
+    const data = sanitizeProgress(JSON.parse(localStorage.getItem(key) || '{}'));
 
     let p = data[id] || {
         stability: 0.5,
@@ -116,20 +149,34 @@ function saveProgress(id, success) {
         interval: 0.5,
         due: 0,
         lapses: 0,
-        reps: 0
+        reps: 0,
+        firstWrong: false,
+        correctCount: 0
     };
 
+    // FSRS
     const grade = success ? 3 : 0;
     p = fsrsUpdate(p, grade);
 
+    // ❗完成系统逻辑
+    if (!success) {
+        p.firstWrong = true;
+    }
+
+    if (success) {
+        if (!fromForce) {
+            p.correctCount = (p.correctCount || 0) + 1;
+        }
+    }
+
     data[id] = p;
-    localStorage.setItem(key, JSON.stringify(data));
+    safeSetProgress(key, data);
 }
 
-// ---------------- 队列 ----------------
+// ---------------- 队列（不改） ----------------
 function buildQueue(limit) {
     const key = `fr_progress_${currentMode}`;
-    const progress = JSON.parse(localStorage.getItem(key) || '{}');
+    const progress = sanitizeProgress(JSON.parse(localStorage.getItem(key) || '{}'));
     const now = Date.now();
 
     let scored = currentData.map(item => {
@@ -142,10 +189,8 @@ function buildQueue(limit) {
         };
 
         const overdue = Math.max(0, now - p.due);
-        const overdueFactor = overdue > 0 ? 200 : 0;
-
         const score =
-            overdueFactor +
+            (overdue > 0 ? 200 : 0) +
             (1 - p.retrievability) * 80 +
             p.difficulty * 10 +
             (1 / (p.stability + 0.1)) * 30;
@@ -154,14 +199,13 @@ function buildQueue(limit) {
     });
 
     scored.sort((a, b) => b.score - a.score);
-
     queue = scored.slice(0, limit);
     queue.sort(() => Math.random() - 0.5);
 
     updateCount();
 }
 
-// ---------------- 渲染 ----------------
+// ---------------- 渲染（不改） ----------------
 function render() {
     if (queue.length === 0 && wrongBuffer.length === 0) {
         dom.cn.innerText = "今日任务达成！🎉";
@@ -190,12 +234,13 @@ function handleCorrect() {
     const item = queue.shift();
 
     showMsg("Très bien !", "success");
+
     saveProgress(item.id, true);
 
     setTimeout(() => {
         render();
         updateCount();
-    }, NEXT_DELAY); // ⭐ 统一
+    }, NEXT_DELAY);
 }
 
 // ---------------- 错误 ----------------
@@ -211,7 +256,7 @@ function handleWrong(correct) {
     forceCorrectMode = true;
 }
 
-// ---------------- 错词回流 ----------------
+// ---------------- 错词回流（不改） ----------------
 function refillWrong() {
     if (wrongBuffer.length === 0) return;
 
@@ -224,7 +269,7 @@ function refillWrong() {
     }
 }
 
-// ---------------- 输入 ----------------
+// ---------------- 输入（不改逻辑） ----------------
 dom.singleInp.onkeypress = (e) => {
     if (e.key !== "Enter") return;
 
@@ -236,23 +281,22 @@ dom.singleInp.onkeypress = (e) => {
 
     speak(correct);
 
-    // ⭐ 强制订正模式
     if (forceCorrectMode) {
         if (input === correct) {
             showMsg("✔ 正确", "success");
             forceCorrectMode = false;
 
-            saveProgress(currentWord.id, true);
+            saveProgress(currentWord.id, true, true);
             queue.shift();
 
             setTimeout(() => {
                 render();
                 updateCount();
-            }, NEXT_DELAY); // ⭐ 统一
+            }, NEXT_DELAY);
         } else {
             showMsg("❌ 再试一次", "error");
             dom.singleInp.value = "";
-            dom.singleInp.focus(); 
+            dom.singleInp.focus();
         }
         return;
     }
@@ -290,8 +334,29 @@ function showMsg(text, type) {
     dom.feedback.className = `feedback ${type}`;
 }
 
+// ---------------- ⭐ 待完成（稳定版） ----------------
 function updateCount() {
-    dom.count.innerText = queue.length + wrongBuffer.length;
+    const key = `fr_progress_${currentMode}`;
+    const progress = sanitizeProgress(JSON.parse(localStorage.getItem(key) || '{}'));
+
+    const total = parseInt(localStorage.getItem(`fr_limit_${currentMode}`)) || 10;
+
+    let completed = 0;
+
+    for (let item of currentData) {
+        const p = progress[item.id];
+
+        const firstWrong = p?.firstWrong || false;
+        const correctCount = Number(p?.correctCount) || 0;
+
+        const isDone =
+            (!firstWrong && correctCount >= 1) ||
+            (firstWrong && correctCount >= 2);
+
+        if (isDone) completed++;
+    }
+
+    dom.count.innerText = total - completed;
 }
 
 // ---------------- 设置 ----------------
