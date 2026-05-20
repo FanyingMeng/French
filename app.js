@@ -1,23 +1,24 @@
 /**
- * 法语记忆系统 (纯哈希 + 扇贝消灭版 + 防抖 + 极简黑名单)
+ * 法语记忆系统 (大词库哈希扩容 + 50%新词配额 + 纯内存扇贝消灭机制 + 防狂按回车锁)
  */
 
+// ─── 状态管理 ─────────────────────────────────────────────
 let currentData = [];
-let queue       = [];   
-let wrongBuffer = [];   
-let recentWords = [];   
-let killedWords = new Set(); // 极小内存占用：被斩掉的简单词 ID
+let queue       = [];   // 今日主词队列
+let wrongBuffer = [];   // 错词队列（包含 streak 属性）
+let recentWords = [];   // 最近出现过的词历史（用于干扰计算）
+let killedWords = new Set(); // 存储被斩掉的简单词 ID
 
 let currentMode        = null;
 let currentWord        = null;
-let forceCorrectWordId = null;  
-let mainPool           = new Set();  
-let mainAnsweredCount  = 0;  
+let forceCorrectWordId = null;  // 当前处于强制订正锁定的词 id
+let mainPool           = new Set();  // 本轮主池原始词 id 集合
+let mainAnsweredCount  = 0;  // 答过的主词数步长（控制错词插入频率）
 
-let nextTimer          = null; // 跳转倒计时
+let nextTimer          = null; // 追踪自动跳转的定时器
 
 const LIMIT_DEFAULT = 100;
-const NEXT_DELAY    = 1500; 
+const NEXT_DELAY    = 1500; // 留出充足时间给用户点击“太简单”
 
 const dom = {
     cn:          document.getElementById('display-cn'),
@@ -28,10 +29,10 @@ const dom = {
     limitInp:    document.getElementById('limit-input'),
     finishArea:  document.getElementById('finish-area'),
     modeOverlay: document.getElementById('mode-overlay'),
-    killBtn:     document.getElementById('btn-kill') 
+    killBtn:     document.getElementById('btn-kill')
 };
 
-// ─── 发音模块 ───
+// ─── 发音模块 ─────────────────────────────────────────────
 async function speak(text) {
     if (!text) return;
     const url = 'https://www.wordreference.com/audio/fr/fr/v1/' +
@@ -48,24 +49,12 @@ async function speak(text) {
     }
 }
 
-function fallbackTTS(text) {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const msg   = new SpeechSynthesisUtterance(text);
-    msg.lang    = 'fr-FR';
-    const frvoc = window.speechSynthesis.getVoices().filter(function(v) {
-        return v.lang.startsWith('fr');
-    });
-    msg.voice   = frvoc.find(function(v) { return v.name.includes('Siri'); }) || frvoc[0];
-    msg.rate    = 0.9;
-    window.speechSynthesis.speak(msg);
-}
-
-// ─── 哈希抽词算法（附带极简黑名单过滤） ───
+// ─── 海量词库扩容版：高阶哈希抽词算法（50%新词 + 50%复习） ──────
 function hashPickWordsOptimized(allWords, dateSeed, limit = 100) {
     if (!allWords || allWords.length === 0) return [];
     
-    const newWordCount = Math.floor(limit * 0.3); 
+    // 【核心比例调整】：50% 新词，50% 复习词
+    const newWordCount = Math.floor(limit * 0.5); 
     const reviewCount = limit - newWordCount;     
 
     function pseudoRandom(seedStr) {
@@ -77,9 +66,11 @@ function hashPickWordsOptimized(allWords, dateSeed, limit = 100) {
         return x - Math.floor(x);
     }
 
-    const BASE_CYCLE = 10000; 
+    // 【扩容】：十万级别的齿轮分母，对动态在末尾追加新词完全免疫
+    const BASE_CYCLE = 100000; 
     const startIndex = (dateSeed * newWordCount) % BASE_CYCLE;
     
+    // 1. 捞取今日新词 (过滤简单词并顺延)
     const newWordsPool = [];
     let offset = 0;
     while (newWordsPool.length < newWordCount && offset < allWords.length) {
@@ -93,7 +84,8 @@ function hashPickWordsOptimized(allWords, dateSeed, limit = 100) {
 
     const newWordsMap = new Set(newWordsPool.map(w => w.id));
 
-    const intervals = [1, 2, 4, 7, 15]; 
+    // 2. 长线复习：扩展至长达半年的艾宾浩斯长期复习节点
+    const intervals = [1, 2, 4, 7, 15, 30, 60, 90, 180]; 
     const reviewPool = [];
 
     for (let i = 0; i < allWords.length; i++) {
@@ -101,7 +93,8 @@ function hashPickWordsOptimized(allWords, dateSeed, limit = 100) {
         if (killedWords.has(word.id) || newWordsMap.has(word.id)) continue;
 
         let wordBirthDay = 0;
-        for (let d = 0; d < 30; d++) {
+        // 深层历史推算：时光机往前溯源推算 200 天
+        for (let d = 0; d < 200; d++) {
             const historySeed = dateSeed - d;
             const histStartIndex = (historySeed * newWordCount) % BASE_CYCLE;
             
@@ -123,6 +116,7 @@ function hashPickWordsOptimized(allWords, dateSeed, limit = 100) {
         }
     }
 
+    // 3. 调度优化：削峰填谷，避免长尾单词饥饿偏科
     if (reviewPool.length < reviewCount) {
         const fallbackWords = allWords.filter(w => !killedWords.has(w.id) && !newWordsMap.has(w.id) && reviewPool.indexOf(w) === -1);
         fallbackWords.sort((a, b) => {
@@ -130,10 +124,13 @@ function hashPickWordsOptimized(allWords, dateSeed, limit = 100) {
         });
         const needMore = reviewCount - reviewPool.length;
         reviewPool.push(...fallbackWords.slice(0, needMore));
-    } else {
-        reviewPool.length = reviewCount;
+    } else if (reviewPool.length > reviewCount) {
+        // 如果超载，基于当天日期种子公平洗牌，再截取前50个，没排上的后续仍有机会
+        reviewPool.sort((a, b) => pseudoRandom(dateSeed + a.id) - pseudoRandom(dateSeed + b.id));
+        reviewPool.length = reviewCount; 
     }
 
+    // 4. 组装今日主流队列并再次无状态洗牌
     const todayQueue = [...newWordsPool, ...reviewPool];
     todayQueue.sort((a, b) => {
         return pseudoRandom(dateSeed + a.id + "shuffle") - pseudoRandom(dateSeed + b.id + "shuffle");
@@ -142,7 +139,7 @@ function hashPickWordsOptimized(allWords, dateSeed, limit = 100) {
     return todayQueue;
 }
 
-// ─── 队列初始化 ───
+// ─── 队列与内存状态初始化 ──────────────────────────────────────
 function buildQueue(limit) {
     const today = new Date();
     const dateSeed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
@@ -158,6 +155,7 @@ function buildQueue(limit) {
     updateCount();
 }
 
+// ─── 错词插空调度 ───────────────────────────────────────────
 function pickNextWord() {
     if (wrongBuffer.length > 0) {
         const recentlySeen = recentWords.slice(-2); 
@@ -165,21 +163,25 @@ function pickNextWord() {
             return item.id !== forceCorrectWordId && recentlySeen.indexOf(item.id) === -1;
         });
 
+        // 触发条件：新词空了，或者答满 3 个主词，或者错词积压超 2 个
         if (idx !== -1 && (queue.length === 0 || mainAnsweredCount >= 3 || wrongBuffer.length > 2)) {
             return wrongBuffer[idx];
         }
     }
+
     if (queue.length > 0) {
         return queue[0];
     }
+
     return wrongBuffer[0] || null;
 }
 
+// ─── 界面渲染 ─────────────────────────────────────────────
 function render() {
     clearTimeout(nextTimer);
     dom.killBtn.style.display = 'none'; 
     
-    // 恢复输入框可用状态
+    // 关键修复：切换题目时解开输入框封锁
     dom.singleInp.readOnly = false; 
     dom.singleInp.style.opacity = '1';
 
@@ -200,21 +202,25 @@ function render() {
     if (recentWords.length > 10) recentWords.shift();
 }
 
-// ─── 太简单按钮点击事件 ───
+// ─── “太简单”按钮点击事件处理 ──────────────────────────────────
 dom.killBtn.onclick = function() {
+    // 健壮性保障：按钮隐藏或没有单词时拒绝处理
     if (!currentWord || dom.killBtn.style.display === 'none') return;
     
-    clearTimeout(nextTimer); 
+    clearTimeout(nextTimer); // 掐断原定的自动跳转
     
+    // 1. 写入极简黑名单缓存（仅记录 id 字符串数组）
     killedWords.add(currentWord.id);
     localStorage.setItem('fr_killed_' + currentMode, JSON.stringify([...killedWords]));
     
+    // 2. 从当前运行时的所有队列中抹除
     const qi = queue.findIndex(w => w.id === currentWord.id);
     if (qi !== -1) queue.splice(qi, 1);
     
     const wi = wrongBuffer.findIndex(w => w.id === currentWord.id);
     if (wi !== -1) wrongBuffer.splice(wi, 1);
 
+    // 3. 状态恢复，直接切题
     forceCorrectWordId = null;
     showMsg('🔪 已斩！不再出现', 'success');
     dom.killBtn.style.display = 'none';
@@ -223,7 +229,7 @@ dom.killBtn.onclick = function() {
     setTimeout(function() { render(); }, 800);
 };
 
-// ─── 键盘输入事件处理 ───
+// ─── 键盘输入拦截与订正逻辑 ─────────────────────────────────────
 dom.singleInp.onkeypress = function(e) {
     if (e.key !== 'Enter') return;
 
@@ -233,12 +239,13 @@ dom.singleInp.onkeypress = function(e) {
     const correct = currentWord.fr.toLowerCase();
     speak(currentWord.fr);
 
+    // ── 强制订正判定 ──
     if (forceCorrectWordId === currentWord.id) {
         if (input === correct) {
             forceCorrectWordId = null;
             showMsg('✔ 订正完成', 'success');
             
-            // 锁定输入框，防止连击
+            // 关键修复：订正成功后封锁键盘输入，防狂按回车“越狱”消灭错词
             dom.singleInp.readOnly = true;
             dom.singleInp.style.opacity = '0.7'; 
 
@@ -251,6 +258,7 @@ dom.singleInp.onkeypress = function(e) {
         return;
     }
 
+    // ── 正常答题判定 ──
     if (input === correct) {
         handleCorrect();
     } else {
@@ -258,17 +266,22 @@ dom.singleInp.onkeypress = function(e) {
     }
 };
 
+// ─── 答对逻辑 (扇贝连续对消灭制) ───────────────────────────────
 function handleCorrect() {
     const item = currentWord;
+    
+    // 主队列无条件移除
     const qi = queue.findIndex(function(w) { return w.id === item.id; });
     if (qi !== -1) queue.splice(qi, 1);
 
+    // 错词小黑屋状态：必须连续对 2 次
     const wi = wrongBuffer.findIndex(function(w) { return w.id === item.id; });
     if (wi !== -1) {
         item.streak = (item.streak || 0) + 1;
         if (item.streak >= 2) wrongBuffer.splice(wi, 1); 
     }
 
+    // 步长时机刷新
     if (mainPool.has(item.id) && qi !== -1) {
         mainAnsweredCount++; 
     } else {
@@ -278,7 +291,7 @@ function handleCorrect() {
     showMsg('Très bien !', 'success');
     updateCount();
     
-    // 锁定输入框，防止连击
+    // 关键修复：正常答对进入倒计时，封锁输入框防狂按
     dom.singleInp.readOnly = true;
     dom.singleInp.style.opacity = '0.7';
 
@@ -286,8 +299,10 @@ function handleCorrect() {
     nextTimer = setTimeout(function() { render(); }, NEXT_DELAY);
 }
 
+// ─── 答错逻辑 (扇贝断连计数清零) ───────────────────────────────
 function handleWrong(correct) {
     const item = currentWord;
+    
     const qi = queue.findIndex(function(w) { return w.id === item.id; });
     if (qi !== -1) queue.splice(qi, 1);
 
@@ -296,21 +311,25 @@ function handleWrong(correct) {
         item.streak = 0;
         wrongBuffer.push(item);
     } else {
-        wrongBuffer[wi].streak = 0; 
+        wrongBuffer[wi].streak = 0; // 【核心】：中途手抖答错，连对数立刻彻底归零
     }
 
-    forceCorrectWordId = item.id; 
+    forceCorrectWordId = item.id; // 原地锁定，开启强制订正
     if (qi !== -1) mainAnsweredCount++;
 
     showMsg('正确答案: ' + correct, 'error');
-    dom.killBtn.style.display = 'inline-block';
+    dom.killBtn.style.display = 'inline-block'; // 错词锁定状态下按钮保持长亮常亮
 }
 
+// ─── 待完成计数 ─────────────────────────────────────────────
 function updateCount() {
     let completed = 0;
     mainPool.forEach(function(id) {
+        // 只要在错词本里，绝对不算完成
         const isStillWrong = wrongBuffer.some(function(w) { return w.id === id; });
         if (isStillWrong) return;
+        
+        // 既不在错词本，也不在待考主队列，说明今天这个词已经被安全干掉了
         const isStillInQueue = queue.some(function(w) { return w.id === id; });
         if (!isStillInQueue) {
             completed++;
@@ -319,12 +338,13 @@ function updateCount() {
     dom.count.innerText = Math.max(0, mainPool.size - completed);
 }
 
-// ─── 启动与设置 ───
+// ─── 系统初始化与黑名单预载 ──────────────────────────────────────
 async function startApp(mode) {
     currentMode = mode;
     const fileName = mode === 'verb' ? 'verbs.json' : 'words.json';
     const limit    = parseInt(localStorage.getItem('fr_limit_' + mode)) || LIMIT_DEFAULT;
 
+    // 预载极简黑名单数据
     const savedKilled = localStorage.getItem('fr_killed_' + mode);
     killedWords = new Set(savedKilled ? JSON.parse(savedKilled) : []);
 
@@ -361,10 +381,24 @@ function saveSettings() {
     closeSettings();
 }
 
+function fallbackTTS(text) {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const msg   = new SpeechSynthesisUtterance(text);
+    msg.lang    = 'fr-FR';
+    const frvoc = window.speechSynthesis.getVoices().filter(function(v) {
+        return v.lang.startsWith('fr');
+    });
+    msg.voice   = frvoc.find(function(v) { return v.name.includes('Siri'); }) || frvoc[0];
+    msg.rate    = 0.9;
+    window.speechSynthesis.speak(msg);
+}
+
 dom.cn.onclick = function() {
     if (currentWord) speak(currentWord.fr);
 };
 
+// ─── 接口暴露 ─────────────────────────────────────────────
 window.startApp     = startApp;
 window.openSettings = openSettings;
 window.saveSettings = saveSettings;
