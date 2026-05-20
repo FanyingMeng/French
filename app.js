@@ -6,6 +6,9 @@
  *   P1-3  updateCount 跳过 killedWords，activeTotal 动态计算
  *   P1-4  pickNextWord 兜底逻辑，防止 wrongBuffer 唯一词被 recentWords 挤死
  *   P3-6  killBtn.onclick 加 disabled 防重入
+ *   P4-7  【新增】mainAnsweredCount 取新词时重置，修复错词连续霸占队列的 bug
+ *   P4-8  【新增】wrongBuffer.length > 2 的硬锁改为软优先（动态 interval）
+ *   P4-9  【新增】handleWrong 中删除错误的 mainAnsweredCount++ 累加
  */
 
 // ─── 状态管理 ─────────────────────────────────────────────
@@ -23,8 +26,12 @@ let mainAnsweredCount  = 0;
 
 let nextTimer = null;
 
-const LIMIT_DEFAULT = 100;
-const NEXT_DELAY    = 1500;
+const LIMIT_DEFAULT       = 100;
+const NEXT_DELAY          = 1500;
+// FIX P4-7：每取 NEW_WORD_INTERVAL 道新词后插入一次错词
+const NEW_WORD_INTERVAL   = 3;
+// FIX P4-8：wrongBuffer 积压超过此数时缩短间隔为 1（每道新词后立刻插错词）
+const WRONG_BACKLOG_LIMIT = 2;
 
 const dom = {
     cn:          document.getElementById('display-cn'),
@@ -198,26 +205,35 @@ function buildQueue(limit) {
 
 // ─── 下一题选词 ───────────────────────────────────────────────────
 // FIX P1-4：wrongBuffer 所有词都在 recentlySeen 时强制取 idx=0，queue 清空后无条件兜底
+// FIX P4-7：取新词时重置 mainAnsweredCount = 0
+// FIX P4-8：wrongBuffer 积压超过 WRONG_BACKLOG_LIMIT 时缩短插入间隔
 function pickNextWord() {
     if (wrongBuffer.length > 0) {
-        const recentlySeen = recentWords.slice(-2);
+        // ✅ FIX P4-8：积压多时每道新词后立刻插错词，积压少时每 NEW_WORD_INTERVAL 道插一次
+        const interval = wrongBuffer.length > WRONG_BACKLOG_LIMIT ? 1 : NEW_WORD_INTERVAL;
 
-        let idx = wrongBuffer.findIndex(function(item) {
-            return item.id !== forceCorrectWordId && recentlySeen.indexOf(item.id) === -1;
-        });
+        if (queue.length === 0 || mainAnsweredCount >= interval) {
+            const recentlySeen = recentWords.slice(-2);
 
-        // ✅ 兜底时先排除 forceCorrectWordId，实在只剩一个词才允许选它
-        if (idx === -1) {
-            idx = wrongBuffer.findIndex(function(item) { return item.id !== forceCorrectWordId; });
-            if (idx === -1) idx = 0;
-        }
+            let idx = wrongBuffer.findIndex(function(item) {
+                return item.id !== forceCorrectWordId && recentlySeen.indexOf(item.id) === -1;
+            });
 
-        if (queue.length === 0 || mainAnsweredCount >= 3 || wrongBuffer.length > 2) {
+            // ✅ FIX P1-4：兜底时先排除 forceCorrectWordId，实在只剩一个词才允许选它
+            if (idx === -1) {
+                idx = wrongBuffer.findIndex(function(item) { return item.id !== forceCorrectWordId; });
+                if (idx === -1) idx = 0;
+            }
+
             return wrongBuffer[idx];
         }
     }
 
-    if (queue.length > 0) return queue[0];
+    if (queue.length > 0) {
+        // ✅ FIX P4-7：取新词时重置计数，保证"答 N 道新词 → 插一次错词"的节奏
+        mainAnsweredCount = 0;
+        return queue[0];
+    }
 
     // ✅ queue 已空且 wrongBuffer 也走完了上面分支的兜底
     return wrongBuffer[0] || null;
@@ -335,6 +351,7 @@ dom.singleInp.onkeypress = function(e) {
 };
 
 // FIX P0-1（correct 分支）：浅拷贝 currentWord，streak 从 wrongBuffer 读取，不污染 currentData
+// FIX P4-7：mainAnsweredCount 在此累加（取新词时重置，形成计数周期）
 function handleCorrect() {
     const item = { ...currentWord };
 
@@ -355,12 +372,12 @@ function handleCorrect() {
             dom.cn.innerHTML = currentWord.cn +
                 `<span style="font-size:15px; color:#e67e22; background:#fff3e0; padding:4px 10px; border-radius:12px; margin-left:12px; vertical-align:middle; font-weight:normal;">2/2</span>`;
         }
-    }
-
-    if (mainPool.has(item.id) && qi !== -1) {
+        // ✅ 错词答对不累加 mainAnsweredCount，不归零，避免打乱错词插入节奏
+    } else if (mainPool.has(item.id) && qi !== -1) {
+        // ✅ FIX P4-7：只有答对新词（来自 queue，且在 mainPool 中）才累加计数
+        // pickNextWord 取新词时已将计数重置为 0，这里做累加
         mainAnsweredCount++;
     }
-    // ✅ 错词答对不归零，避免打乱错词插入节奏
 
     showMsg('Très bien !', 'success');
     updateCount();
@@ -374,6 +391,7 @@ function handleCorrect() {
 }
 
 // FIX P0-1（wrong 分支）：浅拷贝 currentWord，不污染 currentData
+// FIX P4-9：删除原来错误的 mainAnsweredCount++，答错不应计入"已答新词数"
 function handleWrong(correct) {
     const item = { ...currentWord };
 
@@ -389,7 +407,9 @@ function handleWrong(correct) {
     }
 
     forceCorrectWordId = item.id;
-    if (qi !== -1) mainAnsweredCount++;
+    // ✅ FIX P4-9：此处不再累加 mainAnsweredCount
+    // 原来的 `if (qi !== -1) mainAnsweredCount++` 会让答错的新词也触发错词插入计数，
+    // 导致节奏错乱——现在只有 handleCorrect 里答对新词才推进计数
 
     showMsg('正确答案: ' + correct, 'error');
     saveCurrentSession();
