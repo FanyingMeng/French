@@ -1,5 +1,5 @@
 /**
- * 法语记忆系统 (大词库哈希扩容 + 50%新词配额 + 纯内存扇贝消灭机制 + 防狂按回车锁)
+ * 法语记忆系统 (大词库哈希扩容 + 50%新词配额 + 纯内存扇贝消灭机制 + 防连击锁 + 今日断点快照续背 + 词性精准变色)
  */
 
 // ─── 状态管理 ─────────────────────────────────────────────
@@ -11,14 +11,14 @@ let killedWords = new Set(); // 存储被斩掉的简单词 ID
 
 let currentMode        = null;
 let currentWord        = null;
-let forceCorrectWordId = null;  // 当前处于强制订正锁定的词 id
+let forceCorrectWordId = null;  
 let mainPool           = new Set();  // 本轮主池原始词 id 集合
 let mainAnsweredCount  = 0;  // 答过的主词数步长（控制错词插入频率）
 
-let nextTimer          = null; // 追踪自动跳转的定时器
+let nextTimer          = null; 
 
 const LIMIT_DEFAULT = 100;
-const NEXT_DELAY    = 1500; // 留出充足时间给用户点击“太简单”
+const NEXT_DELAY    = 1500; 
 
 const dom = {
     cn:          document.getElementById('display-cn'),
@@ -49,11 +49,10 @@ async function speak(text) {
     }
 }
 
-// ─── 海量词库扩容版：高阶哈希抽词算法（50%新词 + 50%复习） ──────
+// ─── 海量词库算法（50%新词 + 50%复习） ─────────────────────────
 function hashPickWordsOptimized(allWords, dateSeed, limit = 100) {
     if (!allWords || allWords.length === 0) return [];
     
-    // 【核心比例调整】：50% 新词，50% 复习词
     const newWordCount = Math.floor(limit * 0.5); 
     const reviewCount = limit - newWordCount;     
 
@@ -66,11 +65,9 @@ function hashPickWordsOptimized(allWords, dateSeed, limit = 100) {
         return x - Math.floor(x);
     }
 
-    // 【扩容】：十万级别的齿轮分母，对动态在末尾追加新词完全免疫
     const BASE_CYCLE = 100000; 
     const startIndex = (dateSeed * newWordCount) % BASE_CYCLE;
     
-    // 1. 捞取今日新词 (过滤简单词并顺延)
     const newWordsPool = [];
     let offset = 0;
     while (newWordsPool.length < newWordCount && offset < allWords.length) {
@@ -84,7 +81,6 @@ function hashPickWordsOptimized(allWords, dateSeed, limit = 100) {
 
     const newWordsMap = new Set(newWordsPool.map(w => w.id));
 
-    // 2. 长线复习：扩展至长达半年的艾宾浩斯长期复习节点
     const intervals = [1, 2, 4, 7, 15, 30, 60, 90, 180]; 
     const reviewPool = [];
 
@@ -93,7 +89,6 @@ function hashPickWordsOptimized(allWords, dateSeed, limit = 100) {
         if (killedWords.has(word.id) || newWordsMap.has(word.id)) continue;
 
         let wordBirthDay = 0;
-        // 深层历史推算：时光机往前溯源推算 200 天
         for (let d = 0; d < 200; d++) {
             const historySeed = dateSeed - d;
             const histStartIndex = (historySeed * newWordCount) % BASE_CYCLE;
@@ -116,7 +111,6 @@ function hashPickWordsOptimized(allWords, dateSeed, limit = 100) {
         }
     }
 
-    // 3. 调度优化：削峰填谷，避免长尾单词饥饿偏科
     if (reviewPool.length < reviewCount) {
         const fallbackWords = allWords.filter(w => !killedWords.has(w.id) && !newWordsMap.has(w.id) && reviewPool.indexOf(w) === -1);
         fallbackWords.sort((a, b) => {
@@ -125,12 +119,10 @@ function hashPickWordsOptimized(allWords, dateSeed, limit = 100) {
         const needMore = reviewCount - reviewPool.length;
         reviewPool.push(...fallbackWords.slice(0, needMore));
     } else if (reviewPool.length > reviewCount) {
-        // 如果超载，基于当天日期种子公平洗牌，再截取前50个，没排上的后续仍有机会
         reviewPool.sort((a, b) => pseudoRandom(dateSeed + a.id) - pseudoRandom(dateSeed + b.id));
         reviewPool.length = reviewCount; 
     }
 
-    // 4. 组装今日主流队列并再次无状态洗牌
     const todayQueue = [...newWordsPool, ...reviewPool];
     todayQueue.sort((a, b) => {
         return pseudoRandom(dateSeed + a.id + "shuffle") - pseudoRandom(dateSeed + b.id + "shuffle");
@@ -139,23 +131,72 @@ function hashPickWordsOptimized(allWords, dateSeed, limit = 100) {
     return todayQueue;
 }
 
-// ─── 队列与内存状态初始化 ──────────────────────────────────────
+// ─── 今日状态持久化快照层 (断点续背保护) ─────────────────────────
+function saveCurrentSession() {
+    const today = new Date();
+    const dateSeed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+    
+    const sessionSnapshot = {
+        dateSeed: dateSeed,
+        queueIds: queue.map(w => w.id),
+        wrongBufferState: wrongBuffer.map(w => ({ id: w.id, streak: w.streak || 0 })),
+        mainAnsweredCount: mainAnsweredCount
+    };
+    localStorage.setItem('fr_session_' + currentMode, JSON.stringify(sessionSnapshot));
+}
+
+function clearCurrentSession() {
+    localStorage.removeItem('fr_session_' + currentMode);
+}
+
+// ─── 队列载入与历史恢复 ───────────────────────────────────────────
 function buildQueue(limit) {
     const today = new Date();
     const dateSeed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
 
-    queue = hashPickWordsOptimized(currentData, dateSeed, limit);
-    mainPool = new Set(queue.map(function(i) { return i.id; }));
+    const fullTodayQueue = hashPickWordsOptimized(currentData, dateSeed, limit);
+    mainPool = new Set(fullTodayQueue.map(function(i) { return i.id; }));
 
-    wrongBuffer        = [];
-    recentWords        = [];
-    forceCorrectWordId = null;
-    mainAnsweredCount  = 0;
+    const savedSession = localStorage.getItem('fr_session_' + currentMode);
+    let hasRestored = false;
+
+    if (savedSession) {
+        try {
+            const session = JSON.parse(savedSession);
+            // 只有快照日期跟今天一致，才进行断点恢复
+            if (session && session.dateSeed === dateSeed) {
+                queue = fullTodayQueue.filter(w => session.queueIds.includes(w.id));
+                
+                wrongBuffer = [];
+                session.wrongBufferState.forEach(state => {
+                    const wordObj = currentData.find(w => w.id === state.id);
+                    if (wordObj) {
+                        wrongBuffer.push({ ...wordObj, streak: state.streak });
+                    }
+                });
+
+                mainAnsweredCount = session.mainAnsweredCount;
+                forceCorrectWordId = null;
+                recentWords = [];
+                hasRestored = true;
+            }
+        } catch (e) {
+            console.error("快照解析失败，执行全新初始化", e);
+        }
+    }
+
+    if (!hasRestored) {
+        queue              = fullTodayQueue;
+        wrongBuffer        = [];
+        recentWords        = [];
+        forceCorrectWordId = null;
+        mainAnsweredCount  = 0;
+        clearCurrentSession(); // 强力销毁过期的历史数据，跨天自动清零
+    }
 
     updateCount();
 }
 
-// ─── 错词插空调度 ───────────────────────────────────────────
 function pickNextWord() {
     if (wrongBuffer.length > 0) {
         const recentlySeen = recentWords.slice(-2); 
@@ -163,25 +204,21 @@ function pickNextWord() {
             return item.id !== forceCorrectWordId && recentlySeen.indexOf(item.id) === -1;
         });
 
-        // 触发条件：新词空了，或者答满 3 个主词，或者错词积压超 2 个
         if (idx !== -1 && (queue.length === 0 || mainAnsweredCount >= 3 || wrongBuffer.length > 2)) {
             return wrongBuffer[idx];
         }
     }
-
     if (queue.length > 0) {
         return queue[0];
     }
-
     return wrongBuffer[0] || null;
 }
 
-// ─── 界面渲染 ─────────────────────────────────────────────
+// ─── 渲染层 (读取 JSON Gender 字段变色、进度标签) ─────────────────
 function render() {
     clearTimeout(nextTimer);
     dom.killBtn.style.display = 'none'; 
     
-    // 关键修复：切换题目时解开输入框封锁
     dom.singleInp.readOnly = false; 
     dom.singleInp.style.opacity = '1';
 
@@ -189,11 +226,30 @@ function render() {
         dom.cn.innerText            = '今日任务达成！🎉';
         dom.singleInp.style.display = 'none';
         dom.finishArea.style.display = 'block';
+        clearCurrentSession(); 
         return;
     }
 
     currentWord = pickNextWord();
-    dom.cn.innerText       = currentWord.cn;
+    
+    // 阴阳性变色（直接读取 JSON 里的 gender 属性）
+    dom.cn.className = 'word-cn'; 
+    if (currentWord.gender === 'f') {
+        dom.cn.classList.add('gender-f'); // 阴性 -> 蓝色
+    } else if (currentWord.gender === 'm') {
+        dom.cn.classList.add('gender-m'); // 阳性 -> 红色
+    }
+
+    // 错词重塑连对标签
+    let badgeHtml = '';
+    const wi = wrongBuffer.findIndex(w => w.id === currentWord.id);
+    if (wi !== -1) {
+        const currentStreak = wrongBuffer[wi].streak || 0;
+        badgeHtml = `<span style="font-size:15px; color:#e67e22; background:#fff3e0; padding:4px 10px; border-radius:12px; margin-left:12px; vertical-align:middle; font-weight:normal;"> ${currentStreak}/2</span>`;
+    }
+    
+    dom.cn.innerHTML = currentWord.cn + badgeHtml;
+
     dom.feedback.innerText = '';
     dom.singleInp.value    = '';
     dom.singleInp.focus();
@@ -202,34 +258,31 @@ function render() {
     if (recentWords.length > 10) recentWords.shift();
 }
 
-// ─── “太简单”按钮点击事件处理 ──────────────────────────────────
+// ─── 核心打卡交互事件 ───────────────────────────────────────────
 dom.killBtn.onclick = function() {
-    // 健壮性保障：按钮隐藏或没有单词时拒绝处理
     if (!currentWord || dom.killBtn.style.display === 'none') return;
     
-    clearTimeout(nextTimer); // 掐断原定的自动跳转
+    clearTimeout(nextTimer); 
     
-    // 1. 写入极简黑名单缓存（仅记录 id 字符串数组）
     killedWords.add(currentWord.id);
     localStorage.setItem('fr_killed_' + currentMode, JSON.stringify([...killedWords]));
     
-    // 2. 从当前运行时的所有队列中抹除
     const qi = queue.findIndex(w => w.id === currentWord.id);
     if (qi !== -1) queue.splice(qi, 1);
     
     const wi = wrongBuffer.findIndex(w => w.id === currentWord.id);
     if (wi !== -1) wrongBuffer.splice(wi, 1);
 
-    // 3. 状态恢复，直接切题
     forceCorrectWordId = null;
     showMsg('🔪 已斩！不再出现', 'success');
     dom.killBtn.style.display = 'none';
+    
     updateCount();
+    saveCurrentSession(); 
     
     setTimeout(function() { render(); }, 800);
 };
 
-// ─── 键盘输入拦截与订正逻辑 ─────────────────────────────────────
 dom.singleInp.onkeypress = function(e) {
     if (e.key !== 'Enter') return;
 
@@ -239,13 +292,11 @@ dom.singleInp.onkeypress = function(e) {
     const correct = currentWord.fr.toLowerCase();
     speak(currentWord.fr);
 
-    // ── 强制订正判定 ──
     if (forceCorrectWordId === currentWord.id) {
         if (input === correct) {
             forceCorrectWordId = null;
             showMsg('✔ 订正完成', 'success');
             
-            // 关键修复：订正成功后封锁键盘输入，防狂按回车“越狱”消灭错词
             dom.singleInp.readOnly = true;
             dom.singleInp.style.opacity = '0.7'; 
 
@@ -258,7 +309,6 @@ dom.singleInp.onkeypress = function(e) {
         return;
     }
 
-    // ── 正常答题判定 ──
     if (input === correct) {
         handleCorrect();
     } else {
@@ -266,22 +316,17 @@ dom.singleInp.onkeypress = function(e) {
     }
 };
 
-// ─── 答对逻辑 (扇贝连续对消灭制) ───────────────────────────────
 function handleCorrect() {
     const item = currentWord;
-    
-    // 主队列无条件移除
     const qi = queue.findIndex(function(w) { return w.id === item.id; });
     if (qi !== -1) queue.splice(qi, 1);
 
-    // 错词小黑屋状态：必须连续对 2 次
     const wi = wrongBuffer.findIndex(function(w) { return w.id === item.id; });
     if (wi !== -1) {
         item.streak = (item.streak || 0) + 1;
         if (item.streak >= 2) wrongBuffer.splice(wi, 1); 
     }
 
-    // 步长时机刷新
     if (mainPool.has(item.id) && qi !== -1) {
         mainAnsweredCount++; 
     } else {
@@ -290,8 +335,8 @@ function handleCorrect() {
 
     showMsg('Très bien !', 'success');
     updateCount();
-    
-    // 关键修复：正常答对进入倒计时，封锁输入框防狂按
+    saveCurrentSession(); 
+
     dom.singleInp.readOnly = true;
     dom.singleInp.style.opacity = '0.7';
 
@@ -299,10 +344,8 @@ function handleCorrect() {
     nextTimer = setTimeout(function() { render(); }, NEXT_DELAY);
 }
 
-// ─── 答错逻辑 (扇贝断连计数清零) ───────────────────────────────
 function handleWrong(correct) {
     const item = currentWord;
-    
     const qi = queue.findIndex(function(w) { return w.id === item.id; });
     if (qi !== -1) queue.splice(qi, 1);
 
@@ -311,25 +354,25 @@ function handleWrong(correct) {
         item.streak = 0;
         wrongBuffer.push(item);
     } else {
-        wrongBuffer[wi].streak = 0; // 【核心】：中途手抖答错，连对数立刻彻底归零
+        wrongBuffer[wi].streak = 0; 
     }
 
-    forceCorrectWordId = item.id; // 原地锁定，开启强制订正
+    forceCorrectWordId = item.id; 
     if (qi !== -1) mainAnsweredCount++;
 
     showMsg('正确答案: ' + correct, 'error');
-    dom.killBtn.style.display = 'inline-block'; // 错词锁定状态下按钮保持长亮常亮
+    saveCurrentSession(); 
+    dom.killBtn.style.display = 'inline-block';
+
+    // 答错的瞬间，立刻给顶部的中文挂上“重塑 0/2”的牌子！
+    dom.cn.innerHTML = currentWord.cn + `<span style="font-size:15px; color:#e67e22; background:#fff3e0; padding:4px 10px; border-radius:12px; margin-left:12px; vertical-align:middle; font-weight:normal;">错词重塑 0/2</span>`;
 }
 
-// ─── 待完成计数 ─────────────────────────────────────────────
 function updateCount() {
     let completed = 0;
     mainPool.forEach(function(id) {
-        // 只要在错词本里，绝对不算完成
         const isStillWrong = wrongBuffer.some(function(w) { return w.id === id; });
         if (isStillWrong) return;
-        
-        // 既不在错词本，也不在待考主队列，说明今天这个词已经被安全干掉了
         const isStillInQueue = queue.some(function(w) { return w.id === id; });
         if (!isStillInQueue) {
             completed++;
@@ -338,13 +381,12 @@ function updateCount() {
     dom.count.innerText = Math.max(0, mainPool.size - completed);
 }
 
-// ─── 系统初始化与黑名单预载 ──────────────────────────────────────
+// ─── 初始化环境加载 ─────────────────────────────────────────────
 async function startApp(mode) {
     currentMode = mode;
     const fileName = mode === 'verb' ? 'verbs.json' : 'words.json';
     const limit    = parseInt(localStorage.getItem('fr_limit_' + mode)) || LIMIT_DEFAULT;
 
-    // 预载极简黑名单数据
     const savedKilled = localStorage.getItem('fr_killed_' + mode);
     killedWords = new Set(savedKilled ? JSON.parse(savedKilled) : []);
 
@@ -376,6 +418,7 @@ function closeSettings() {
 function saveSettings() {
     const val = parseInt(dom.limitInp.value) || LIMIT_DEFAULT;
     localStorage.setItem('fr_limit_' + currentMode, val);
+    clearCurrentSession(); // 修改词数时，清空当前快照，重新推演
     buildQueue(val);
     render();
     closeSettings();
@@ -398,7 +441,7 @@ dom.cn.onclick = function() {
     if (currentWord) speak(currentWord.fr);
 };
 
-// ─── 接口暴露 ─────────────────────────────────────────────
+// ─── 外部方法挂载 ────────────────────────────────────────────
 window.startApp     = startApp;
 window.openSettings = openSettings;
 window.saveSettings = saveSettings;

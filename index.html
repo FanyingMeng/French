@@ -99,7 +99,12 @@
             margin-bottom: 40px;
             min-height: 45px;
             cursor: pointer;
+            transition: color 0.2s;
         }
+
+        /* 强制覆盖：阴性蓝色，阳性红色 */
+        .gender-f { color: var(--sb-blue) !important; }
+        .gender-m { color: var(--sb-red) !important; }
 
         input {
             border: none;
