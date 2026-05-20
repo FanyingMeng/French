@@ -1,302 +1,252 @@
 /**
- * 法语记忆系统 - FSRS 2.0（稳定防炸版）
+ * 法语记忆系统 (纯哈希 + 扇贝消灭版 + 防抖 + 极简黑名单)
  */
 
 let currentData = [];
-let queue = [];
-let wrongBuffer = [];
-let recentWords = [];
+let queue       = [];   
+let wrongBuffer = [];   
+let recentWords = [];   
+let killedWords = new Set(); // 极小内存占用：被斩掉的简单词 ID
 
-let currentMode = null;
-let currentWord = null;
+let currentMode        = null;
+let currentWord        = null;
+let forceCorrectWordId = null;  
+let mainPool           = new Set();  
+let mainAnsweredCount  = 0;  
 
-let forceCorrectMode = false;
+let nextTimer          = null; // 跳转倒计时
 
-const NEXT_DELAY = 1200;
+const LIMIT_DEFAULT = 100;
+const NEXT_DELAY    = 1500; 
 
-// ---------------- DOM ----------------
 const dom = {
-    cn: document.getElementById('display-cn'),
-    singleInp: document.getElementById('single-input'),
-    feedback: document.getElementById('feedback'),
-    count: document.getElementById('count'),
-    modal: document.getElementById('modal'),
-    limitInp: document.getElementById('limit-input'),
-    finishArea: document.getElementById('finish-area'),
-    modeOverlay: document.getElementById('mode-overlay')
+    cn:          document.getElementById('display-cn'),
+    singleInp:   document.getElementById('single-input'),
+    feedback:    document.getElementById('feedback'),
+    count:       document.getElementById('count'),
+    modal:       document.getElementById('modal'),
+    limitInp:    document.getElementById('limit-input'),
+    finishArea:  document.getElementById('finish-area'),
+    modeOverlay: document.getElementById('mode-overlay'),
+    killBtn:     document.getElementById('btn-kill') 
 };
 
-// =======================================================
-// 🧠 数据防炸层（新增核心）
-// =======================================================
-
-function sanitizeProgress(progress = {}) {
-    const clean = {};
-
-    for (const id in progress) {
-        const p = progress[id];
-        if (!p) continue;
-
-        clean[id] = {
-            stability: Number(p.stability) || 0.5,
-            difficulty: Number(p.difficulty) || 5,
-            retrievability: Number(p.retrievability) || 1,
-            interval: Number(p.interval) || 0.5,
-            due: Number(p.due) || 0,
-            lapses: Number(p.lapses) || 0,
-            reps: Number(p.reps) || 0,
-
-            firstWrong: Boolean(p.firstWrong),
-            correctCount: Number(p.correctCount) || 0
-        };
-    }
-
-    return clean;
-}
-
-function safeSetProgress(key, data) {
-    const cleaned = sanitizeProgress(data);
-    localStorage.setItem(key, JSON.stringify(cleaned));
-}
-
-// ---------------- 发音 ----------------
+// ─── 发音模块 ───
 async function speak(text) {
     if (!text) return;
-
-    const word = text.trim().toLowerCase();
-    const url = `https://www.wordreference.com/audio/fr/fr/v1/${encodeURIComponent(word)}.mp3`;
-
-    if (window.currentAudio) {
-        window.currentAudio.pause();
-    }
-
+    const url = 'https://www.wordreference.com/audio/fr/fr/v1/' +
+        encodeURIComponent(text.trim().toLowerCase()) + '.mp3';
+    if (window.currentAudio) window.currentAudio.pause();
     window.currentAudio = new Audio(url);
-
     try {
-        const playPromise = window.currentAudio.play();
-        const timeout = new Promise((_, reject) => setTimeout(reject, 800));
-        await Promise.race([playPromise, timeout]);
-    } catch {
+        await Promise.race([
+            window.currentAudio.play(),
+            new Promise(function(_, r) { setTimeout(r, 800); })
+        ]);
+    } catch (e) {
         fallbackTTS(text);
     }
 }
 
 function fallbackTTS(text) {
     if (!window.speechSynthesis) return;
-
     window.speechSynthesis.cancel();
-
-    const msg = new SpeechSynthesisUtterance(text);
-    msg.lang = 'fr-FR';
-
-    const voices = window.speechSynthesis.getVoices();
-    const frVoices = voices.filter(v => v.lang.startsWith('fr'));
-
-    msg.voice =
-        frVoices.find(v => v.name.includes('Siri')) ||
-        frVoices[0];
-
-    msg.rate = 0.9;
+    const msg   = new SpeechSynthesisUtterance(text);
+    msg.lang    = 'fr-FR';
+    const frvoc = window.speechSynthesis.getVoices().filter(function(v) {
+        return v.lang.startsWith('fr');
+    });
+    msg.voice   = frvoc.find(function(v) { return v.name.includes('Siri'); }) || frvoc[0];
+    msg.rate    = 0.9;
     window.speechSynthesis.speak(msg);
 }
 
-// ---------------- FSRS（完全不改） ----------------
-function fsrsUpdate(p, grade) {
-    const now = Date.now();
+// ─── 哈希抽词算法（附带极简黑名单过滤） ───
+function hashPickWordsOptimized(allWords, dateSeed, limit = 100) {
+    if (!allWords || allWords.length === 0) return [];
+    
+    const newWordCount = Math.floor(limit * 0.3); 
+    const reviewCount = limit - newWordCount;     
 
-    const daysSince = p.due
-        ? (now - p.due) / (1000 * 60 * 60 * 24)
-        : 1;
-
-    p.retrievability = Math.exp(-daysSince / (p.stability || 1));
-
-    if (grade === 3) {
-        p.stability *= 1.3;
-        p.difficulty = Math.max(1, p.difficulty - 0.3);
-    } else if (grade === 2) {
-        p.stability *= 1.05;
-    } else if (grade === 1) {
-        p.stability *= 0.7;
-        p.difficulty += 0.5;
-    } else {
-        p.stability *= 0.4;
-        p.lapses++;
+    function pseudoRandom(seedStr) {
+        let hash = 0;
+        for (let i = 0; i < seedStr.length; i++) {
+            hash = seedStr.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const x = Math.sin(hash) * 10000;
+        return x - Math.floor(x);
     }
 
-    p.stability = Math.max(0.2, Math.min(p.stability, 30));
-    p.difficulty = Math.max(1, Math.min(p.difficulty, 10));
-
-    p.interval = Math.max(
-        0.5,
-        p.stability * (1 + (10 - p.difficulty) / 10)
-    );
-
-    p.due = now + p.interval * 24 * 60 * 60 * 1000;
-
-    p.reps++;
-    return p;
-}
-
-// ---------------- 保存（稳定版） ----------------
-function saveProgress(id, success, fromForce = false) {
-    const key = `fr_progress_${currentMode}`;
-    const data = sanitizeProgress(JSON.parse(localStorage.getItem(key) || '{}'));
-
-    let p = data[id] || {
-        stability: 0.5,
-        difficulty: 5,
-        retrievability: 1,
-        interval: 0.5,
-        due: 0,
-        lapses: 0,
-        reps: 0,
-        firstWrong: false,
-        correctCount: 0
-    };
-
-    // FSRS
-    const grade = success ? 3 : 0;
-    p = fsrsUpdate(p, grade);
-
-    // ❗完成系统逻辑
-    if (!success) {
-        p.firstWrong = true;
+    const BASE_CYCLE = 10000; 
+    const startIndex = (dateSeed * newWordCount) % BASE_CYCLE;
+    
+    const newWordsPool = [];
+    let offset = 0;
+    while (newWordsPool.length < newWordCount && offset < allWords.length) {
+        const realIndex = (startIndex + offset) % allWords.length;
+        const w = allWords[realIndex];
+        if (!killedWords.has(w.id)) {
+            newWordsPool.push(w);
+        }
+        offset++;
     }
 
-    if (success) {
-        if (!fromForce) {
-            p.correctCount = (p.correctCount || 0) + 1;
+    const newWordsMap = new Set(newWordsPool.map(w => w.id));
+
+    const intervals = [1, 2, 4, 7, 15]; 
+    const reviewPool = [];
+
+    for (let i = 0; i < allWords.length; i++) {
+        const word = allWords[i];
+        if (killedWords.has(word.id) || newWordsMap.has(word.id)) continue;
+
+        let wordBirthDay = 0;
+        for (let d = 0; d < 30; d++) {
+            const historySeed = dateSeed - d;
+            const histStartIndex = (historySeed * newWordCount) % BASE_CYCLE;
+            
+            let isBirth = false;
+            for (let j = 0; j < newWordCount; j++) {
+                if ((histStartIndex + j) % allWords.length === i) {
+                    isBirth = true;
+                    break;
+                }
+            }
+            if (isBirth) {
+                wordBirthDay = d; 
+                break;
+            }
+        }
+
+        if (intervals.indexOf(wordBirthDay) !== -1) {
+            reviewPool.push(word);
         }
     }
 
-    data[id] = p;
-    safeSetProgress(key, data);
-}
+    if (reviewPool.length < reviewCount) {
+        const fallbackWords = allWords.filter(w => !killedWords.has(w.id) && !newWordsMap.has(w.id) && reviewPool.indexOf(w) === -1);
+        fallbackWords.sort((a, b) => {
+            return pseudoRandom(dateSeed + a.id) - pseudoRandom(dateSeed + b.id);
+        });
+        const needMore = reviewCount - reviewPool.length;
+        reviewPool.push(...fallbackWords.slice(0, needMore));
+    } else {
+        reviewPool.length = reviewCount;
+    }
 
-// ---------------- 队列（不改） ----------------
-function buildQueue(limit) {
-    const key = `fr_progress_${currentMode}`;
-    const progress = sanitizeProgress(JSON.parse(localStorage.getItem(key) || '{}'));
-    const now = Date.now();
-
-    let scored = currentData.map(item => {
-        let p = progress[item.id] || {
-            stability: 0.5,
-            difficulty: 5,
-            retrievability: 1,
-            interval: 0.5,
-            due: 0
-        };
-
-        const overdue = Math.max(0, now - p.due);
-        const score =
-            (overdue > 0 ? 200 : 0) +
-            (1 - p.retrievability) * 80 +
-            p.difficulty * 10 +
-            (1 / (p.stability + 0.1)) * 30;
-
-        return { ...item, ...p, score };
+    const todayQueue = [...newWordsPool, ...reviewPool];
+    todayQueue.sort((a, b) => {
+        return pseudoRandom(dateSeed + a.id + "shuffle") - pseudoRandom(dateSeed + b.id + "shuffle");
     });
 
-    scored.sort((a, b) => b.score - a.score);
-    queue = scored.slice(0, limit);
-    queue.sort(() => Math.random() - 0.5);
+    return todayQueue;
+}
+
+// ─── 队列初始化 ───
+function buildQueue(limit) {
+    const today = new Date();
+    const dateSeed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+
+    queue = hashPickWordsOptimized(currentData, dateSeed, limit);
+    mainPool = new Set(queue.map(function(i) { return i.id; }));
+
+    wrongBuffer        = [];
+    recentWords        = [];
+    forceCorrectWordId = null;
+    mainAnsweredCount  = 0;
 
     updateCount();
 }
 
-// ---------------- 渲染（不改） ----------------
+function pickNextWord() {
+    if (wrongBuffer.length > 0) {
+        const recentlySeen = recentWords.slice(-2); 
+        let idx = wrongBuffer.findIndex(function(item) {
+            return item.id !== forceCorrectWordId && recentlySeen.indexOf(item.id) === -1;
+        });
+
+        if (idx !== -1 && (queue.length === 0 || mainAnsweredCount >= 3 || wrongBuffer.length > 2)) {
+            return wrongBuffer[idx];
+        }
+    }
+    if (queue.length > 0) {
+        return queue[0];
+    }
+    return wrongBuffer[0] || null;
+}
+
 function render() {
+    clearTimeout(nextTimer);
+    dom.killBtn.style.display = 'none'; 
+    
+    // 恢复输入框可用状态
+    dom.singleInp.readOnly = false; 
+    dom.singleInp.style.opacity = '1';
+
     if (queue.length === 0 && wrongBuffer.length === 0) {
-        dom.cn.innerText = "今日任务达成！🎉";
-        dom.singleInp.style.display = "none";
-        dom.finishArea.style.display = "block";
+        dom.cn.innerText            = '今日任务达成！🎉';
+        dom.singleInp.style.display = 'none';
+        dom.finishArea.style.display = 'block';
         return;
     }
 
-    refillWrong();
-
-    currentWord = queue[0];
-
-    dom.cn.innerText = currentWord.cn;
-    dom.feedback.innerText = "";
-    dom.cn.className = `word-cn gender-${currentWord.gender || 'none'}`;
-
-    dom.singleInp.value = "";
+    currentWord = pickNextWord();
+    dom.cn.innerText       = currentWord.cn;
+    dom.feedback.innerText = '';
+    dom.singleInp.value    = '';
     dom.singleInp.focus();
 
     recentWords.push(currentWord.id);
-    if (recentWords.length > 5) recentWords.shift();
+    if (recentWords.length > 10) recentWords.shift();
 }
 
-// ---------------- 正确 ----------------
-function handleCorrect() {
-    const item = queue.shift();
+// ─── 太简单按钮点击事件 ───
+dom.killBtn.onclick = function() {
+    if (!currentWord || dom.killBtn.style.display === 'none') return;
+    
+    clearTimeout(nextTimer); 
+    
+    killedWords.add(currentWord.id);
+    localStorage.setItem('fr_killed_' + currentMode, JSON.stringify([...killedWords]));
+    
+    const qi = queue.findIndex(w => w.id === currentWord.id);
+    if (qi !== -1) queue.splice(qi, 1);
+    
+    const wi = wrongBuffer.findIndex(w => w.id === currentWord.id);
+    if (wi !== -1) wrongBuffer.splice(wi, 1);
 
-    showMsg("Très bien !", "success");
+    forceCorrectWordId = null;
+    showMsg('🔪 已斩！不再出现', 'success');
+    dom.killBtn.style.display = 'none';
+    updateCount();
+    
+    setTimeout(function() { render(); }, 800);
+};
 
-    saveProgress(item.id, true);
-
-    setTimeout(() => {
-        render();
-        updateCount();
-    }, NEXT_DELAY);
-}
-
-// ---------------- 错误 ----------------
-function handleWrong(correct) {
-    const item = queue.shift();
-
-    saveProgress(item.id, false);
-
-    wrongBuffer.push(item);
-
-    showMsg(`正确答案: ${correct}`, "error");
-
-    forceCorrectMode = true;
-}
-
-// ---------------- 错词回流（不改） ----------------
-function refillWrong() {
-    if (wrongBuffer.length === 0) return;
-
-    if (queue.length <= 3) {
-        let index = wrongBuffer.findIndex(i => !recentWords.includes(i.id));
-        if (index === -1) index = 0;
-
-        const item = wrongBuffer.splice(index, 1)[0];
-        queue.splice(Math.min(3, queue.length), 0, item);
-    }
-}
-
-// ---------------- 输入（不改逻辑） ----------------
-dom.singleInp.onkeypress = (e) => {
-    if (e.key !== "Enter") return;
+// ─── 键盘输入事件处理 ───
+dom.singleInp.onkeypress = function(e) {
+    if (e.key !== 'Enter') return;
 
     const input = dom.singleInp.value.trim().toLowerCase();
-
     if (!currentWord) return;
 
     const correct = currentWord.fr.toLowerCase();
+    speak(currentWord.fr);
 
-    speak(correct);
-
-    if (forceCorrectMode) {
+    if (forceCorrectWordId === currentWord.id) {
         if (input === correct) {
-            showMsg("✔ 正确", "success");
-            forceCorrectMode = false;
+            forceCorrectWordId = null;
+            showMsg('✔ 订正完成', 'success');
+            
+            // 锁定输入框，防止连击
+            dom.singleInp.readOnly = true;
+            dom.singleInp.style.opacity = '0.7'; 
 
-            saveProgress(currentWord.id, true, true);
-            queue.shift();
-
-            setTimeout(() => {
-                render();
-                updateCount();
-            }, NEXT_DELAY);
+            dom.killBtn.style.display = 'inline-block';
+            nextTimer = setTimeout(function() { render(); }, NEXT_DELAY);
         } else {
-            showMsg("❌ 再试一次", "error");
-            dom.singleInp.value = "";
-            dom.singleInp.focus();
+            showMsg('❌ 再试一次', 'error');
+            dom.singleInp.value = '';
         }
         return;
     }
@@ -308,96 +258,113 @@ dom.singleInp.onkeypress = (e) => {
     }
 };
 
-// ---------------- 启动 ----------------
+function handleCorrect() {
+    const item = currentWord;
+    const qi = queue.findIndex(function(w) { return w.id === item.id; });
+    if (qi !== -1) queue.splice(qi, 1);
+
+    const wi = wrongBuffer.findIndex(function(w) { return w.id === item.id; });
+    if (wi !== -1) {
+        item.streak = (item.streak || 0) + 1;
+        if (item.streak >= 2) wrongBuffer.splice(wi, 1); 
+    }
+
+    if (mainPool.has(item.id) && qi !== -1) {
+        mainAnsweredCount++; 
+    } else {
+        mainAnsweredCount = 0; 
+    }
+
+    showMsg('Très bien !', 'success');
+    updateCount();
+    
+    // 锁定输入框，防止连击
+    dom.singleInp.readOnly = true;
+    dom.singleInp.style.opacity = '0.7';
+
+    dom.killBtn.style.display = 'inline-block';
+    nextTimer = setTimeout(function() { render(); }, NEXT_DELAY);
+}
+
+function handleWrong(correct) {
+    const item = currentWord;
+    const qi = queue.findIndex(function(w) { return w.id === item.id; });
+    if (qi !== -1) queue.splice(qi, 1);
+
+    const wi = wrongBuffer.findIndex(function(w) { return w.id === item.id; });
+    if (wi === -1) {
+        item.streak = 0;
+        wrongBuffer.push(item);
+    } else {
+        wrongBuffer[wi].streak = 0; 
+    }
+
+    forceCorrectWordId = item.id; 
+    if (qi !== -1) mainAnsweredCount++;
+
+    showMsg('正确答案: ' + correct, 'error');
+    dom.killBtn.style.display = 'inline-block';
+}
+
+function updateCount() {
+    let completed = 0;
+    mainPool.forEach(function(id) {
+        const isStillWrong = wrongBuffer.some(function(w) { return w.id === id; });
+        if (isStillWrong) return;
+        const isStillInQueue = queue.some(function(w) { return w.id === id; });
+        if (!isStillInQueue) {
+            completed++;
+        }
+    });
+    dom.count.innerText = Math.max(0, mainPool.size - completed);
+}
+
+// ─── 启动与设置 ───
 async function startApp(mode) {
     currentMode = mode;
+    const fileName = mode === 'verb' ? 'verbs.json' : 'words.json';
+    const limit    = parseInt(localStorage.getItem('fr_limit_' + mode)) || LIMIT_DEFAULT;
 
-    const fileName = mode === "verb" ? "verbs.json" : "words.json";
-
-    const limitKey = `fr_limit_${mode}`;
-    const limit = parseInt(localStorage.getItem(limitKey)) || 10;
+    const savedKilled = localStorage.getItem('fr_killed_' + mode);
+    killedWords = new Set(savedKilled ? JSON.parse(savedKilled) : []);
 
     dom.limitInp.value = limit;
 
-    const res = await fetch(fileName);
+    const res   = await fetch(fileName);
     currentData = await res.json();
 
-    dom.modeOverlay.style.display = "none";
+    dom.modeOverlay.style.display = 'none';
 
     buildQueue(limit);
     render();
 }
 
-// ---------------- UI ----------------
 function showMsg(text, type) {
     dom.feedback.innerText = text;
-    dom.feedback.className = `feedback ${type}`;
+    dom.feedback.className = 'feedback ' + type;
 }
 
-// ---------------- ⭐ 待完成（稳定版） ----------------
-function updateCount() {
-    const key = `fr_progress_${currentMode}`;
-    const progress = sanitizeProgress(JSON.parse(localStorage.getItem(key) || '{}'));
-
-    const total = parseInt(localStorage.getItem(`fr_limit_${currentMode}`)) || 10;
-
-    let completed = 0;
-
-    for (let item of currentData) {
-        const p = progress[item.id];
-
-        const firstWrong = p?.firstWrong || false;
-        const correctCount = Number(p?.correctCount) || 0;
-
-        const isDone =
-            (!firstWrong && correctCount >= 1) ||
-            (firstWrong && correctCount >= 2);
-
-        if (isDone) completed++;
-    }
-
-    dom.count.innerText = total - completed;
-}
-
-// ---------------- 设置 ----------------
 function openSettings() {
     if (!currentMode) return;
-    dom.modal.style.display = "block";
+    dom.modal.style.display = 'block';
 }
 
 function closeSettings() {
-    dom.modal.style.display = "none";
+    dom.modal.style.display = 'none';
 }
 
 function saveSettings() {
-    const val = parseInt(dom.limitInp.value) || 10;
-
-    localStorage.setItem(`fr_limit_${currentMode}`, val);
-
+    const val = parseInt(dom.limitInp.value) || LIMIT_DEFAULT;
+    localStorage.setItem('fr_limit_' + currentMode, val);
     buildQueue(val);
     render();
-
     closeSettings();
 }
 
-function clearCurrentProgress() {
-    localStorage.removeItem(`fr_progress_${currentMode}`);
-
-    showMsg("已重置进度", "success");
-
-    buildQueue(parseInt(dom.limitInp.value) || 10);
-    render();
-
-    closeSettings();
-}
-
-// ---------------- 点击发音 ----------------
-dom.cn.onclick = () => {
+dom.cn.onclick = function() {
     if (currentWord) speak(currentWord.fr);
 };
 
-// ---------------- 暴露 ----------------
-window.startApp = startApp;
+window.startApp     = startApp;
 window.openSettings = openSettings;
 window.saveSettings = saveSettings;
-window.clearCurrentProgress = clearCurrentProgress;
