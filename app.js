@@ -1,5 +1,5 @@
 /**
- * 法语记忆系统 (大词库哈希扩容 + 50%新词配额 + 纯内存扇贝消灭机制 + 防连击锁 + 今日断点快照续背 + 词性精准变色)
+ * 法语记忆系统 (大词库哈希扩容 + 50%新词配额 + 纯内存海量消灭机制 + 防连击锁 + 今日断点快照续背 + 词性精准变色)
  */
 
 // ─── 状态管理 ─────────────────────────────────────────────
@@ -163,7 +163,6 @@ function buildQueue(limit) {
     if (savedSession) {
         try {
             const session = JSON.parse(savedSession);
-            // 只有快照日期跟今天一致，才进行断点恢复
             if (session && session.dateSeed === dateSeed) {
                 queue = fullTodayQueue.filter(w => session.queueIds.includes(w.id));
                 
@@ -171,7 +170,7 @@ function buildQueue(limit) {
                 session.wrongBufferState.forEach(state => {
                     const wordObj = currentData.find(w => w.id === state.id);
                     if (wordObj) {
-                        wrongBuffer.push({ ...wordObj, streak: state.streak });
+                        wrongBuffer.push({ ...wordObj, streak: state.streak || 0 });
                     }
                 });
 
@@ -191,7 +190,7 @@ function buildQueue(limit) {
         recentWords        = [];
         forceCorrectWordId = null;
         mainAnsweredCount  = 0;
-        clearCurrentSession(); // 强力销毁过期的历史数据，跨天自动清零
+        clearCurrentSession(); 
     }
 
     updateCount();
@@ -214,7 +213,7 @@ function pickNextWord() {
     return wrongBuffer[0] || null;
 }
 
-// ─── 渲染层 (读取 JSON Gender 字段变色、进度标签) ─────────────────
+// ─── 渲染层 (自动区分正常词与错词) ─────────────────
 function render() {
     clearTimeout(nextTimer);
     dom.killBtn.style.display = 'none'; 
@@ -232,20 +231,20 @@ function render() {
 
     currentWord = pickNextWord();
     
-    // 阴阳性变色（直接读取 JSON 里的 gender 属性）
+    // 词性颜色处理
     dom.cn.className = 'word-cn'; 
     if (currentWord.gender === 'f') {
-        dom.cn.classList.add('gender-f'); // 阴性 -> 蓝色
+        dom.cn.classList.add('gender-f'); 
     } else if (currentWord.gender === 'm') {
-        dom.cn.classList.add('gender-m'); // 阳性 -> 红色
+        dom.cn.classList.add('gender-m'); 
     }
 
-    // 错词重塑连对标签
+    // 判断当前词是否在错词池中。如果在，才渲染标签；如果是正常词，干干净净。
     let badgeHtml = '';
     const wi = wrongBuffer.findIndex(w => w.id === currentWord.id);
     if (wi !== -1) {
         const currentStreak = wrongBuffer[wi].streak || 0;
-        badgeHtml = `<span style="font-size:15px; color:#e67e22; background:#fff3e0; padding:4px 10px; border-radius:12px; margin-left:12px; vertical-align:middle; font-weight:normal;"> ${currentStreak}/2</span>`;
+        badgeHtml = `<span style="font-size:15px; color:#e67e22; background:#fff3e0; padding:4px 10px; border-radius:12px; margin-left:12px; vertical-align:middle; font-weight:normal;">${currentStreak}/2</span>`;
     }
     
     dom.cn.innerHTML = currentWord.cn + badgeHtml;
@@ -290,17 +289,20 @@ dom.singleInp.onkeypress = function(e) {
     if (!currentWord) return;
 
     const correct = currentWord.fr.toLowerCase();
-    speak(currentWord.fr);
 
+    // 强制订正期输入捕获
     if (forceCorrectWordId === currentWord.id) {
         if (input === correct) {
             forceCorrectWordId = null;
             showMsg('✔ 订正完成', 'success');
-            
+            speak(currentWord.fr);
+
+            // 强制订正仅仅是过眼熟，不计入进度（streak保持不变），原有的 0/2 标签留在原位
             dom.singleInp.readOnly = true;
             dom.singleInp.style.opacity = '0.7'; 
-
             dom.killBtn.style.display = 'inline-block';
+            
+            saveCurrentSession();
             nextTimer = setTimeout(function() { render(); }, NEXT_DELAY);
         } else {
             showMsg('❌ 再试一次', 'error');
@@ -309,6 +311,8 @@ dom.singleInp.onkeypress = function(e) {
         return;
     }
 
+    // 正常测试期捕获（凭记忆默写）
+    speak(currentWord.fr);
     if (input === correct) {
         handleCorrect();
     } else {
@@ -323,9 +327,17 @@ function handleCorrect() {
 
     const wi = wrongBuffer.findIndex(function(w) { return w.id === item.id; });
     if (wi !== -1) {
+        // 只有在错词池里的词凭记忆再次默写正确，才真正计入进度并实时更新标签
         item.streak = (item.streak || 0) + 1;
-        if (item.streak >= 2) wrongBuffer.splice(wi, 1); 
-    }
+        
+        if (item.streak === 1) {
+            dom.cn.innerHTML = currentWord.cn + `<span style="font-size:15px; color:#e67e22; background:#fff3e0; padding:4px 10px; border-radius:12px; margin-left:12px; vertical-align:middle; font-weight:normal;">1/2</span>`;
+        } else if (item.streak >= 2) {
+            wrongBuffer.splice(wi, 1); // 达到 2/2，脱离苦海
+            dom.cn.innerHTML = currentWord.cn + `<span style="font-size:15px; color:#e67e22; background:#fff3e0; padding:4px 10px; border-radius:12px; margin-left:12px; vertical-align:middle; font-weight:normal;">2/2</span>`;
+        }
+    } 
+    // 如果不在错词池（也就是第一次见面的正常词打对了），什么标签都不会加
 
     if (mainPool.has(item.id) && qi !== -1) {
         mainAnsweredCount++; 
@@ -339,8 +351,8 @@ function handleCorrect() {
 
     dom.singleInp.readOnly = true;
     dom.singleInp.style.opacity = '0.7';
-
     dom.killBtn.style.display = 'inline-block';
+    
     nextTimer = setTimeout(function() { render(); }, NEXT_DELAY);
 }
 
@@ -364,8 +376,8 @@ function handleWrong(correct) {
     saveCurrentSession(); 
     dom.killBtn.style.display = 'inline-block';
 
-    // 答错的瞬间，立刻给顶部的中文挂上“重塑 0/2”的牌子！
-    dom.cn.innerHTML = currentWord.cn + `<span style="font-size:15px; color:#e67e22; background:#fff3e0; padding:4px 10px; border-radius:12px; margin-left:12px; vertical-align:middle; font-weight:normal;">错词重塑 0/2</span>`;
+    // 只要答错，瞬间在顶部挂上 0/2，并且后续必须经过强制订正
+    dom.cn.innerHTML = currentWord.cn + `<span style="font-size:15px; color:#e67e22; background:#fff3e0; padding:4px 10px; border-radius:12px; margin-left:12px; vertical-align:middle; font-weight:normal;">0/2</span>`;
 }
 
 function updateCount() {
@@ -418,7 +430,7 @@ function closeSettings() {
 function saveSettings() {
     const val = parseInt(dom.limitInp.value) || LIMIT_DEFAULT;
     localStorage.setItem('fr_limit_' + currentMode, val);
-    clearCurrentSession(); // 修改词数时，清空当前快照，重新推演
+    clearCurrentSession(); 
     buildQueue(val);
     render();
     closeSettings();
