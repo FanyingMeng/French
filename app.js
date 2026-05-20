@@ -9,6 +9,8 @@
  *   P4-7  【新增】mainAnsweredCount 取新词时重置，修复错词连续霸占队列的 bug
  *   P4-8  【新增】wrongBuffer.length > 2 的硬锁改为软优先（动态 interval）
  *   P4-9  【新增】handleWrong 中删除错误的 mainAnsweredCount++ 累加
+ *   P5-10 【新增】buildQueue 恢复快照后过滤 wrongBuffer 中不属于新 mainPool 的词（源头修复）
+ *   P5-11 【新增】updateCount 兜底：将 wrongBuffer 里不在 mainPool 的词也纳入统计
  */
 
 // ─── 状态管理 ─────────────────────────────────────────────
@@ -184,6 +186,12 @@ function buildQueue(limit) {
                 mainAnsweredCount  = session.mainAnsweredCount;
                 forceCorrectWordId = null;
                 recentWords        = [];
+
+                // ✅ FIX P5-10：过滤掉不属于当天 mainPool 的 wrongBuffer 词
+                // 跨天、改 limit 等场景下快照里的错词可能已不在新 mainPool 里，
+                // 留着会导致 updateCount 永远统计不到它们
+                wrongBuffer = wrongBuffer.filter(w => mainPool.has(w.id));
+
                 hasRestored        = true;
             }
         } catch (e) {
@@ -421,17 +429,25 @@ function handleWrong(correct) {
 
 // ─── 计数更新 ─────────────────────────────────────────────────────
 // FIX P1-3：跳过 killedWords，用 activeTotal 作分母
+// FIX P5-11：wrongBuffer 里不在 mainPool 的词（极端情况兜底）也纳入统计
 function updateCount() {
+    // 收集 wrongBuffer 里漏网的词（正常情况下 P5-10 已在源头清理，这里是双保险）
+    const extraIds = wrongBuffer
+        .map(w => w.id)
+        .filter(id => !killedWords.has(id) && !mainPool.has(id));
+
+    const allTracked = new Set([...mainPool, ...extraIds]);
+
     let completed = 0;
-    mainPool.forEach(function(id) {
-        if (killedWords.has(id)) return; // ✅ 已斩词既不算完成也不算剩余
+    allTracked.forEach(function(id) {
+        if (killedWords.has(id)) return;
         const isStillWrong   = wrongBuffer.some(w => w.id === id);
         if (isStillWrong) return;
         const isStillInQueue = queue.some(w => w.id === id);
         if (!isStillInQueue) completed++;
     });
 
-    const activeTotal = [...mainPool].filter(id => !killedWords.has(id)).length;
+    const activeTotal = [...allTracked].filter(id => !killedWords.has(id)).length;
     dom.count.innerText = Math.max(0, activeTotal - completed);
 }
 
