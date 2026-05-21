@@ -1,24 +1,9 @@
-/**
- * 法语记忆系统
- * 修复清单：
- *   P0-1  handleWrong / handleCorrect 用浅拷贝，不再污染 currentData
- *   P0-2  hashPickWordsOptimized 复习词算法重写（getNewWordsForDay 辅助函数）
- *   P1-3  updateCount 跳过 killedWords，activeTotal 动态计算
- *   P1-4  pickNextWord 兜底逻辑，防止 wrongBuffer 唯一词被 recentWords 挤死
- *   P3-6  killBtn.onclick 加 disabled 防重入
- *   P4-7  【新增】mainAnsweredCount 取新词时重置，修复错词连续霸占队列的 bug
- *   P4-8  【新增】wrongBuffer.length > 2 的硬锁改为软优先（动态 interval）
- *   P4-9  【新增】handleWrong 中删除错误的 mainAnsweredCount++ 累加
- *   P5-10 【新增】buildQueue 恢复快照后过滤 wrongBuffer 中不属于新 mainPool 的词（源头修复）
- *   P5-11 【新增】updateCount 兜底：将 wrongBuffer 里不在 mainPool 的词也纳入统计
- */
-
-// ─── 状态管理 ─────────────────────────────────────────────
 let currentData = [];
 let queue       = [];
 let wrongBuffer = [];
 let recentWords = [];
 let killedWords = new Set();
+let answeredIds = new Set();   // ← 新增：显式追踪真正答对的词
 
 let currentMode        = null;
 let currentWord        = null;
@@ -29,10 +14,8 @@ let mainAnsweredCount  = 0;
 let nextTimer = null;
 
 const LIMIT_DEFAULT       = 100;
-const NEXT_DELAY          = 1500;
-// FIX P4-7：每取 NEW_WORD_INTERVAL 道新词后插入一次错词
+const NEXT_DELAY          = 1200;
 const NEW_WORD_INTERVAL   = 3;
-// FIX P4-8：wrongBuffer 积压超过此数时缩短间隔为 1（每道新词后立刻插错词）
 const WRONG_BACKLOG_LIMIT = 2;
 
 const dom = {
@@ -65,11 +48,10 @@ async function speak(text) {
 }
 
 // ─── 海量词库算法（50%新词 + 50%复习） ─────────────────────────
-// FIX P0-2：抽取某天新词的纯函数，基于 allWords.length 取模，复习池直接调用它
 function hashPickWordsOptimized(allWords, dateSeed, limit = 100) {
     if (!allWords || allWords.length === 0) return [];
 
-    const newWordCount = Math.floor(limit * 0.5);
+    const newWordCount = Math.floor(limit * 0.7);
     const reviewCount  = limit - newWordCount;
 
     function pseudoRandom(seed) {
@@ -77,9 +59,7 @@ function hashPickWordsOptimized(allWords, dateSeed, limit = 100) {
         return x - Math.floor(x);
     }
 
-    // ✅ 纯函数：返回指定日期种子下应学的新词列表
     function getNewWordsForDay(seed) {
-        // FNV-1a 哈希散列，充分打散起点，避免线性乘法的周期重叠问题
         function hashSeed(s) {
             let h = 2166136261;
             const str = String(s);
@@ -105,7 +85,6 @@ function hashPickWordsOptimized(allWords, dateSeed, limit = 100) {
     const todayNewWords = getNewWordsForDay(dateSeed);
     const newWordsMap   = new Set(todayNewWords.map(w => w.id));
 
-    // ✅ 复习池：遍历间隔天数，直接复用 getNewWordsForDay 获取历史新词
     const intervals   = [1, 2, 4, 7, 15, 30, 60, 90, 180];
     const reviewPool  = [];
     const reviewAdded = new Set();
@@ -121,7 +100,6 @@ function hashPickWordsOptimized(allWords, dateSeed, limit = 100) {
         if (reviewPool.length >= reviewCount) break;
     }
 
-    // fallback：复习词不足时随机补充
     if (reviewPool.length < reviewCount) {
         const fallback = allWords.filter(w =>
             !killedWords.has(w.id) && !newWordsMap.has(w.id) && !reviewAdded.has(w.id)
@@ -140,16 +118,17 @@ function hashPickWordsOptimized(allWords, dateSeed, limit = 100) {
     return todayQueue;
 }
 
-// ─── 今日状态持久化快照层 (断点续背保护) ─────────────────────────
+// ─── 今日状态持久化快照层 ─────────────────────────────────────────
 function saveCurrentSession() {
     const today    = new Date();
     const dateSeed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
 
     const sessionSnapshot = {
-        dateSeed:          dateSeed,
+        dateSeed,
         queueIds:          queue.map(w => w.id),
         wrongBufferState:  wrongBuffer.map(w => ({ id: w.id, streak: w.streak || 0 })),
-        mainAnsweredCount: mainAnsweredCount
+        mainAnsweredCount,
+        answeredIds:       [...answeredIds],   // ← 新增
     };
     localStorage.setItem('fr_session_' + currentMode, JSON.stringify(sessionSnapshot));
 }
@@ -184,15 +163,13 @@ function buildQueue(limit) {
                 });
 
                 mainAnsweredCount  = session.mainAnsweredCount;
+                answeredIds        = new Set(session.answeredIds || []);   // ← 新增
                 forceCorrectWordId = null;
                 recentWords        = [];
 
-                // ✅ FIX P5-10：过滤掉不属于当天 mainPool 的 wrongBuffer 词
-                // 跨天、改 limit 等场景下快照里的错词可能已不在新 mainPool 里，
-                // 留着会导致 updateCount 永远统计不到它们
                 wrongBuffer = wrongBuffer.filter(w => mainPool.has(w.id));
 
-                hasRestored        = true;
+                hasRestored = true;
             }
         } catch (e) {
             console.error("快照解析失败，执行全新初始化", e);
@@ -203,6 +180,7 @@ function buildQueue(limit) {
         queue              = fullTodayQueue;
         wrongBuffer        = [];
         recentWords        = [];
+        answeredIds        = new Set();   // ← 新增
         forceCorrectWordId = null;
         mainAnsweredCount  = 0;
         clearCurrentSession();
@@ -212,12 +190,8 @@ function buildQueue(limit) {
 }
 
 // ─── 下一题选词 ───────────────────────────────────────────────────
-// FIX P1-4：wrongBuffer 所有词都在 recentlySeen 时强制取 idx=0，queue 清空后无条件兜底
-// FIX P4-7：取新词时重置 mainAnsweredCount = 0
-// FIX P4-8：wrongBuffer 积压超过 WRONG_BACKLOG_LIMIT 时缩短插入间隔
 function pickNextWord() {
     if (wrongBuffer.length > 0) {
-        // ✅ FIX P4-8：积压多时每道新词后立刻插错词，积压少时每 NEW_WORD_INTERVAL 道插一次
         const interval = wrongBuffer.length > WRONG_BACKLOG_LIMIT ? 1 : NEW_WORD_INTERVAL;
 
         if (queue.length === 0 || mainAnsweredCount >= interval) {
@@ -227,7 +201,6 @@ function pickNextWord() {
                 return item.id !== forceCorrectWordId && recentlySeen.indexOf(item.id) === -1;
             });
 
-            // ✅ FIX P1-4：兜底时先排除 forceCorrectWordId，实在只剩一个词才允许选它
             if (idx === -1) {
                 idx = wrongBuffer.findIndex(function(item) { return item.id !== forceCorrectWordId; });
                 if (idx === -1) idx = 0;
@@ -238,21 +211,19 @@ function pickNextWord() {
     }
 
     if (queue.length > 0) {
-        // ✅ FIX P4-7：取新词时重置计数，保证"答 N 道新词 → 插一次错词"的节奏
         mainAnsweredCount = 0;
         return queue[0];
     }
 
-    // ✅ queue 已空且 wrongBuffer 也走完了上面分支的兜底
     return wrongBuffer[0] || null;
 }
 
-// ─── 渲染层 (自动区分正常词与错词) ─────────────────
+// ─── 渲染层 ──────────────────────────────────────────────────────
 function render() {
     clearTimeout(nextTimer);
     dom.killBtn.style.display = 'none';
 
-    dom.singleInp.readOnly    = false;
+    dom.singleInp.readOnly      = false;
     dom.singleInp.style.opacity = '1';
 
     if (queue.length === 0 && wrongBuffer.length === 0) {
@@ -290,7 +261,6 @@ function render() {
 }
 
 // ─── 斩词按钮 ─────────────────────────────────────────────────────
-// FIX P3-6：disabled 防连击
 dom.killBtn.onclick = function() {
     if (!currentWord || dom.killBtn.style.display === 'none') return;
 
@@ -307,7 +277,7 @@ dom.killBtn.onclick = function() {
     if (wi !== -1) wrongBuffer.splice(wi, 1);
 
     forceCorrectWordId   = null;
-    dom.killBtn.disabled = false; // display:none 已防住，状态复位保持干净
+    dom.killBtn.disabled = false;
     showMsg('🔪 已斩！不再出现', 'success');
     dom.killBtn.style.display = 'none';
 
@@ -320,7 +290,7 @@ dom.killBtn.onclick = function() {
 // ─── 核心打卡交互事件 ─────────────────────────────────────────────
 dom.singleInp.onkeypress = function(e) {
     if (e.key !== 'Enter') return;
-    if (dom.singleInp.readOnly) return; // ✅ 输入框已锁则直接忽略，防连击穿透
+    if (dom.singleInp.readOnly) return;
 
     const input = dom.singleInp.value.trim().toLowerCase();
     if (!currentWord) return;
@@ -334,7 +304,6 @@ dom.singleInp.onkeypress = function(e) {
             showMsg('✔ 订正完成', 'success');
             speak(currentWord.fr);
 
-            // ✅ 立刻锁死输入框，防止连击回车在 timer 触发前走入正常测试分支
             dom.singleInp.readOnly      = true;
             dom.singleInp.style.opacity = '0.7';
             dom.singleInp.value         = '';
@@ -358,8 +327,7 @@ dom.singleInp.onkeypress = function(e) {
     }
 };
 
-// FIX P0-1（correct 分支）：浅拷贝 currentWord，streak 从 wrongBuffer 读取，不污染 currentData
-// FIX P4-7：mainAnsweredCount 在此累加（取新词时重置，形成计数周期）
+// ─── 答对处理 ─────────────────────────────────────────────────────
 function handleCorrect() {
     const item = { ...currentWord };
 
@@ -368,7 +336,6 @@ function handleCorrect() {
 
     const wi = wrongBuffer.findIndex(function(w) { return w.id === item.id; });
     if (wi !== -1) {
-        // ✅ 从 wrongBuffer 取 streak，写回 wrongBuffer，不碰 currentData
         item.streak = (wrongBuffer[wi].streak || 0) + 1;
         wrongBuffer[wi] = { ...wrongBuffer[wi], streak: item.streak };
 
@@ -377,13 +344,12 @@ function handleCorrect() {
                 `<span style="font-size:15px; color:#e67e22; background:#fff3e0; padding:4px 10px; border-radius:12px; margin-left:12px; vertical-align:middle; font-weight:normal;">1/2</span>`;
         } else if (item.streak >= 2) {
             wrongBuffer.splice(wi, 1);
+            answeredIds.add(item.id);   // ← 新增：错词毕业时记录
             dom.cn.innerHTML = currentWord.cn +
                 `<span style="font-size:15px; color:#e67e22; background:#fff3e0; padding:4px 10px; border-radius:12px; margin-left:12px; vertical-align:middle; font-weight:normal;">2/2</span>`;
         }
-        // ✅ 错词答对不累加 mainAnsweredCount，不归零，避免打乱错词插入节奏
     } else if (mainPool.has(item.id) && qi !== -1) {
-        // ✅ FIX P4-7：只有答对新词（来自 queue，且在 mainPool 中）才累加计数
-        // pickNextWord 取新词时已将计数重置为 0，这里做累加
+        answeredIds.add(item.id);   // ← 新增：新词第一次答对时记录
         mainAnsweredCount++;
     }
 
@@ -398,8 +364,7 @@ function handleCorrect() {
     nextTimer = setTimeout(function() { render(); }, NEXT_DELAY);
 }
 
-// FIX P0-1（wrong 分支）：浅拷贝 currentWord，不污染 currentData
-// FIX P4-9：删除原来错误的 mainAnsweredCount++，答错不应计入"已答新词数"
+// ─── 答错处理 ─────────────────────────────────────────────────────
 function handleWrong(correct) {
     const item = { ...currentWord };
 
@@ -415,9 +380,6 @@ function handleWrong(correct) {
     }
 
     forceCorrectWordId = item.id;
-    // ✅ FIX P4-9：此处不再累加 mainAnsweredCount
-    // 原来的 `if (qi !== -1) mainAnsweredCount++` 会让答错的新词也触发错词插入计数，
-    // 导致节奏错乱——现在只有 handleCorrect 里答对新词才推进计数
 
     showMsg('正确答案: ' + correct, 'error');
     saveCurrentSession();
@@ -427,27 +389,10 @@ function handleWrong(correct) {
         `<span style="font-size:15px; color:#e67e22; background:#fff3e0; padding:4px 10px; border-radius:12px; margin-left:12px; vertical-align:middle; font-weight:normal;">0/2</span>`;
 }
 
-// ─── 计数更新 ─────────────────────────────────────────────────────
-// FIX P1-3：跳过 killedWords，用 activeTotal 作分母
-// FIX P5-11：wrongBuffer 里不在 mainPool 的词（极端情况兜底）也纳入统计
+// ─── 计数更新（用 answeredIds 正向统计，不再反推）────────────────
 function updateCount() {
-    // 收集 wrongBuffer 里漏网的词（正常情况下 P5-10 已在源头清理，这里是双保险）
-    const extraIds = wrongBuffer
-        .map(w => w.id)
-        .filter(id => !killedWords.has(id) && !mainPool.has(id));
-
-    const allTracked = new Set([...mainPool, ...extraIds]);
-
-    let completed = 0;
-    allTracked.forEach(function(id) {
-        if (killedWords.has(id)) return;
-        const isStillWrong   = wrongBuffer.some(w => w.id === id);
-        if (isStillWrong) return;
-        const isStillInQueue = queue.some(w => w.id === id);
-        if (!isStillInQueue) completed++;
-    });
-
-    const activeTotal = [...allTracked].filter(id => !killedWords.has(id)).length;
+    const activeTotal = [...mainPool].filter(id => !killedWords.has(id)).length;
+    const completed   = [...answeredIds].filter(id => !killedWords.has(id)).length;
     dom.count.innerText = Math.max(0, activeTotal - completed);
 }
 
