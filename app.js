@@ -1,48 +1,64 @@
 // ═══════════════════════════════════════════════════════════════
-//  法语单词练习 — 核心逻辑（Bug 修复版）
+//  法语单词/动词/句子练习 — 核心逻辑
 //
-//  修复清单：
+//  模式说明：
+//   'word'     普通单词：显示中文 → 输入法语拼写
+//   'verb'     动词变位：显示中文 → 输入法语拼写
+//   'sentence' 背诵句子：显示中文 → 按 Enter 揭示答案 → 自评记住/没记住
+//
+//  Bug 修复清单（相比原始版本）：
 //   Fix 1. forceCorrect 订正成功后 mainAnsweredCount++ （原本永不增加，
 //          导致新词被错词无限挤出，几乎出不来）
-//   Fix 2. killBtn.disabled 在同步帧内被立即解锁，800ms 延迟期间
-//          可以二次误触；改为仅靠 display:none 防护，render() 统一重置
-//   Fix 3. fallbackTTS getVoices() 首次调用返回空列表，改为监听
-//          onvoiceschanged 事件后再朗读
-//   Fix 4. recentWords.push 时机错误（先选词后记录，防重失效）；
-//          改为先记录上一题再 pick，保证防重窗口覆盖当前题
+//   Fix 2. killBtn 的 disabled 同帧解锁无防护；改为立即 display:none
+//   Fix 3. fallbackTTS getVoices() 首次为空，改用 onvoiceschanged 事件
+//   Fix 4. recentWords.push 时机错误，移到 pickNextWord 之前
 // ═══════════════════════════════════════════════════════════════
 
 let currentData = [];
-let queue       = [];       // 今日待做新词队列（有序，逐个弹出）
-let wrongBuffer = [];       // 错词缓冲区（答错后放入，连续答对2次才移出）
-let recentWords = [];       // 最近展示的词 id，防止短时间内重复
-let killedWords = new Set();  // 永久屏蔽的词
-let answeredIds = new Set();  // 今日已完成的词（新词答对 or 错词毕业）
+let queue       = [];
+let wrongBuffer = [];
+let recentWords = [];
+let killedWords = new Set();
+let answeredIds = new Set();
 
 let currentMode        = null;
 let currentWord        = null;
-let forceCorrectWordId = null;  // 答错后强制订正：必须输入正确才能继续
-let mainPool           = new Set();  // 今日词池（所有词 id）
-let mainAnsweredCount  = 0;         // 距上次插入错词后，连续答对的计数
+let forceCorrectWordId = null;
+let mainPool           = new Set();
+let mainAnsweredCount  = 0;
+
+// 句子模式专用：当前句子是否已翻开答案
+let sentenceRevealed = false;
 
 let nextTimer = null;
 
 const LIMIT_DEFAULT       = 100;
 const NEXT_DELAY          = 1200;
-const NEW_WORD_INTERVAL   = 3;     // 每答对 N 题新词，插入一次错词复习
-const WRONG_BACKLOG_LIMIT = 2;     // wrongBuffer 超过此数量时，间隔压缩为 1
+const NEW_WORD_INTERVAL   = 3;
+const WRONG_BACKLOG_LIMIT = 2;
 
 const dom = {
-    cn:          document.getElementById('display-cn'),
-    singleInp:   document.getElementById('single-input'),
-    feedback:    document.getElementById('feedback'),
-    count:       document.getElementById('count'),
-    modal:       document.getElementById('modal'),
-    limitInp:    document.getElementById('limit-input'),
-    finishArea:  document.getElementById('finish-area'),
-    modeOverlay: document.getElementById('mode-overlay'),
-    killBtn:     document.getElementById('btn-kill')
+    cn:                 document.getElementById('display-cn'),
+    singleInp:          document.getElementById('single-input'),
+    wordArea:           document.getElementById('word-area'),
+    feedback:           document.getElementById('feedback'),
+    count:              document.getElementById('count'),
+    modal:              document.getElementById('modal'),
+    limitInp:           document.getElementById('limit-input'),
+    finishArea:         document.getElementById('finish-area'),
+    modeOverlay:        document.getElementById('mode-overlay'),
+    killBtn:            document.getElementById('btn-kill'),
+    // 句子模式专用
+    sentenceRevealArea: document.getElementById('sentence-reveal-area'),
+    sentenceHint:       document.getElementById('sentence-hint'),
+    sentenceAnswer:     document.getElementById('sentence-answer'),
+    sentenceJudgeRow:   document.getElementById('sentence-judge-row'),
 };
+
+// ─── 是否句子模式 ──────────────────────────────────────────────
+function isSentenceMode() {
+    return currentMode === 'sentence';
+}
 
 // ─── 发音 ──────────────────────────────────────────────────────
 async function speak(text) {
@@ -62,7 +78,8 @@ async function speak(text) {
 }
 
 // ─── 每日词表生成（哈希确定性算法）────────────────────────────
-function hashPickWordsOptimized(allWords, dateSeed, limit = 100) {
+function hashPickWordsOptimized(allWords, dateSeed, limit) {
+    limit = limit || 100;
     if (!allWords || allWords.length === 0) return [];
 
     const newWordCount = Math.floor(limit * 0.5);
@@ -168,10 +185,10 @@ function buildQueue(limit) {
                 queue = fullTodayQueue.filter(w => session.queueIds.includes(w.id));
 
                 wrongBuffer = [];
-                session.wrongBufferState.forEach(state => {
+                session.wrongBufferState.forEach(function(state) {
                     const wordObj = currentData.find(w => w.id === state.id);
                     if (wordObj) {
-                        wrongBuffer.push({ ...wordObj, streak: state.streak || 0 });
+                        wrongBuffer.push(Object.assign({}, wordObj, { streak: state.streak || 0 }));
                     }
                 });
 
@@ -179,8 +196,7 @@ function buildQueue(limit) {
                 answeredIds        = new Set(session.answeredIds || []);
                 forceCorrectWordId = null;
                 recentWords        = [];
-
-                wrongBuffer = wrongBuffer.filter(w => mainPool.has(w.id));
+                wrongBuffer        = wrongBuffer.filter(w => mainPool.has(w.id));
 
                 hasRestored = true;
             }
@@ -210,12 +226,12 @@ function pickNextWord() {
         if (queue.length === 0 || mainAnsweredCount >= interval) {
             const recentlySeen = recentWords.slice(-2);
 
-            let idx = wrongBuffer.findIndex(w =>
-                w.id !== forceCorrectWordId && !recentlySeen.includes(w.id)
-            );
+            let idx = wrongBuffer.findIndex(function(w) {
+                return w.id !== forceCorrectWordId && !recentlySeen.includes(w.id);
+            });
 
             if (idx === -1) {
-                idx = wrongBuffer.findIndex(w => w.id !== forceCorrectWordId);
+                idx = wrongBuffer.findIndex(function(w) { return w.id !== forceCorrectWordId; });
             }
 
             if (idx === -1) {
@@ -227,31 +243,45 @@ function pickNextWord() {
         }
     }
 
-    if (queue.length > 0) {
-        return queue[0];
-    }
+    if (queue.length > 0) return queue[0];
 
     return wrongBuffer[0] || null;
+}
+
+// ─── 句子模式 UI 切换 ──────────────────────────────────────────
+function showSentenceUI() {
+    dom.wordArea.style.display           = 'none';
+    dom.sentenceRevealArea.style.display = 'flex';
+    dom.sentenceAnswer.style.display     = 'none';
+    dom.sentenceJudgeRow.style.display   = 'none';
+    dom.sentenceHint.style.display       = 'block';
+    sentenceRevealed                     = false;
+}
+
+function showWordUI() {
+    dom.wordArea.style.display           = 'block';
+    dom.sentenceRevealArea.style.display = 'none';
 }
 
 // ─── 渲染 ──────────────────────────────────────────────────────
 function render() {
     clearTimeout(nextTimer);
-    dom.killBtn.style.display = 'none';
-
-    dom.singleInp.readOnly      = false;
-    dom.singleInp.style.opacity = '1';
+    dom.killBtn.style.display  = 'none';
+    dom.feedback.innerText     = '';
 
     if (queue.length === 0 && wrongBuffer.length === 0) {
         dom.cn.innerText             = '今日任务达成！🎉';
-        dom.singleInp.style.display  = 'none';
+        if (isSentenceMode()) {
+            dom.sentenceRevealArea.style.display = 'none';
+        } else {
+            dom.singleInp.style.display = 'none';
+        }
         dom.finishArea.style.display = 'block';
         clearCurrentSession();
         return;
     }
 
-    // Fix 4: 先把上一题记录进 recentWords，再 pick 下一题
-    // 原代码在 render 末尾才 push，导致 pickNextWord 里的防重窗口落后一题
+    // Fix 4: 先记录上一题再选下一题，保证防重窗口覆盖当前题
     if (currentWord) {
         recentWords.push(currentWord.id);
         if (recentWords.length > 10) recentWords.shift();
@@ -260,57 +290,63 @@ function render() {
     currentWord = pickNextWord();
     if (!currentWord) return;
 
+    // 根据模式设置 display-cn 的样式
     dom.cn.className = 'word-cn';
-    if (currentWord.gender === 'f')      dom.cn.classList.add('gender-f');
-    else if (currentWord.gender === 'm') dom.cn.classList.add('gender-m');
+    if (isSentenceMode()) {
+        dom.cn.classList.add('sentence-mode');
+        showSentenceUI();
+    } else {
+        if (currentWord.gender === 'f')      dom.cn.classList.add('gender-f');
+        else if (currentWord.gender === 'm') dom.cn.classList.add('gender-m');
+        showWordUI();
+        dom.singleInp.readOnly      = false;
+        dom.singleInp.style.opacity = '1';
+        dom.singleInp.value         = '';
+        dom.singleInp.style.display = '';
+        dom.singleInp.focus();
+    }
 
     dom.cn.innerHTML = currentWord.cn + buildStreakBadge(currentWord.id);
-
-    dom.feedback.innerText = '';
-    dom.singleInp.value    = '';
-    dom.singleInp.focus();
 }
 
-// 错词进度角标
+// ─── 角标 ──────────────────────────────────────────────────────
 function buildStreakBadge(wordId, overrideStreak) {
-    const wi = wrongBuffer.findIndex(w => w.id === wordId);
+    const wi = wrongBuffer.findIndex(function(w) { return w.id === wordId; });
     if (wi === -1 && overrideStreak === undefined) return '';
     const streak = overrideStreak !== undefined ? overrideStreak : (wrongBuffer[wi].streak || 0);
-    return `<span style="font-size:15px; color:#e67e22; background:#fff3e0; padding:4px 10px; border-radius:12px; margin-left:12px; vertical-align:middle; font-weight:normal;">${streak}/2</span>`;
+    return '<span style="font-size:15px; color:#e67e22; background:#fff3e0; padding:4px 10px; border-radius:12px; margin-left:12px; vertical-align:middle; font-weight:normal;">' + streak + '/2</span>';
 }
 
 // ─── 斩词 ──────────────────────────────────────────────────────
-// Fix 2: 移除 disabled=true/false 的同帧解锁逻辑；
-//        改为仅依赖 display:none 防止重复点击，render() 开头统一重置
+// Fix 2: 立即 display:none，不用 disabled 同帧解锁
 dom.killBtn.onclick = function() {
     if (!currentWord || dom.killBtn.style.display === 'none') return;
 
-    // 立即隐藏，防止 800ms 延迟内二次触发
     dom.killBtn.style.display = 'none';
     clearTimeout(nextTimer);
 
     killedWords.add(currentWord.id);
     localStorage.setItem('fr_killed_' + currentMode, JSON.stringify([...killedWords]));
 
-    const qi = queue.findIndex(w => w.id === currentWord.id);
+    const qi = queue.findIndex(function(w) { return w.id === currentWord.id; });
     if (qi !== -1) queue.splice(qi, 1);
 
-    const wi = wrongBuffer.findIndex(w => w.id === currentWord.id);
+    const wi = wrongBuffer.findIndex(function(w) { return w.id === currentWord.id; });
     if (wi !== -1) wrongBuffer.splice(wi, 1);
 
     forceCorrectWordId = null;
 
     showMsg('🔪 已斩！不再出现', 'success');
-
     updateCount();
     saveCurrentSession();
     setTimeout(function() { render(); }, 800);
 };
 
-// ─── 输入事件 ──────────────────────────────────────────────────
+// ─── 输入事件（单词/动词模式）────────────────────────────────
 dom.singleInp.onkeypress = function(e) {
     if (e.key !== 'Enter') return;
     if (dom.singleInp.readOnly) return;
+    if (isSentenceMode()) return;
 
     const input = dom.singleInp.value.trim().toLowerCase();
     if (!currentWord) return;
@@ -322,10 +358,7 @@ dom.singleInp.onkeypress = function(e) {
         if (input === correct) {
             forceCorrectWordId = null;
 
-            // Fix 1: 订正成功也要推进计数，否则新词永远被错词挤占
-            // 此处不走 handleCorrect() 完整流程（错词 streak 已在 handleWrong 时设为0，
-            // 此次订正仅是"看了一眼正确答案"，不算 streak 进度），
-            // 但 mainAnsweredCount 必须更新，让新词有机会弹出
+            // Fix 1: 订正成功也要推进计数
             mainAnsweredCount++;
 
             showMsg('✔ 订正完成', 'success');
@@ -353,12 +386,68 @@ dom.singleInp.onkeypress = function(e) {
     }
 };
 
+// ─── 句子模式：Enter 键揭示答案 ──────────────────────────────
+document.addEventListener('keypress', function(e) {
+    if (e.key !== 'Enter') return;
+    if (!isSentenceMode()) return;
+    if (!currentWord) return;
+    if (sentenceRevealed) return;
+
+    revealSentence();
+});
+
+function revealSentence() {
+    if (sentenceRevealed) return;
+    sentenceRevealed = true;
+
+    dom.sentenceAnswer.innerText     = currentWord.fr;
+    dom.sentenceAnswer.style.display = 'block';
+    dom.sentenceHint.style.display   = 'none';
+    dom.sentenceJudgeRow.style.display = 'flex';
+    dom.killBtn.style.display          = 'inline-block';
+
+    // 句子也尝试朗读
+    speak(currentWord.fr);
+}
+
+// ─── 句子自评（记住了 / 没记住）──────────────────────────────
+function sentenceJudge(remembered) {
+    if (!currentWord) return;
+
+    // 隐藏判断按钮，防止重复点
+    dom.sentenceJudgeRow.style.display = 'none';
+    dom.killBtn.style.display          = 'none';
+
+    if (remembered) {
+        handleCorrect();
+    } else {
+        // 没记住：放入 wrongBuffer，streak 归零，不需要订正直接下一题
+        const qi = queue.findIndex(function(w) { return w.id === currentWord.id; });
+        if (qi !== -1) queue.splice(qi, 1);
+
+        const wi = wrongBuffer.findIndex(function(w) { return w.id === currentWord.id; });
+        if (wi === -1) {
+            wrongBuffer.push(Object.assign({}, currentWord, { streak: 0 }));
+        } else {
+            wrongBuffer[wi].streak = 0;
+        }
+
+        mainAnsweredCount = 0;
+        showMsg('📌 已加入复习队列', 'error');
+        dom.cn.innerHTML = currentWord.cn + buildStreakBadge(currentWord.id, 0);
+        saveCurrentSession();
+        updateCount();
+
+        nextTimer = setTimeout(function() { render(); }, NEXT_DELAY);
+    }
+}
+
 // ─── 答对处理 ──────────────────────────────────────────────────
 function handleCorrect() {
-    const wi        = wrongBuffer.findIndex(w => w.id === currentWord.id);
+    const wi        = wrongBuffer.findIndex(function(w) { return w.id === currentWord.id; });
     const fromWrong = wi !== -1;
 
-    const qi = queue.findIndex(w => w.id === currentWord.id);
+    const qi = queue.findIndex(function(w) { return w.id === currentWord.id; });
     if (qi !== -1) queue.splice(qi, 1);
 
     if (fromWrong) {
@@ -373,9 +462,7 @@ function handleCorrect() {
             dom.cn.innerHTML = currentWord.cn + buildStreakBadge(currentWord.id, newStreak);
         }
 
-        // 错词答对：重置计数
         mainAnsweredCount = 0;
-
     } else {
         answeredIds.add(currentWord.id);
         mainAnsweredCount++;
@@ -385,21 +472,23 @@ function handleCorrect() {
     updateCount();
     saveCurrentSession();
 
-    dom.singleInp.readOnly      = true;
-    dom.singleInp.style.opacity = '0.7';
-    dom.killBtn.style.display   = 'inline-block';
+    if (!isSentenceMode()) {
+        dom.singleInp.readOnly      = true;
+        dom.singleInp.style.opacity = '0.7';
+        dom.killBtn.style.display   = 'inline-block';
+    }
 
     nextTimer = setTimeout(function() { render(); }, NEXT_DELAY);
 }
 
-// ─── 答错处理 ──────────────────────────────────────────────────
+// ─── 答错处理（单词/动词模式）────────────────────────────────
 function handleWrong(correct) {
-    const qi = queue.findIndex(w => w.id === currentWord.id);
+    const qi = queue.findIndex(function(w) { return w.id === currentWord.id; });
     if (qi !== -1) queue.splice(qi, 1);
 
-    const wi = wrongBuffer.findIndex(w => w.id === currentWord.id);
+    const wi = wrongBuffer.findIndex(function(w) { return w.id === currentWord.id; });
     if (wi === -1) {
-        wrongBuffer.push({ ...currentWord, streak: 0 });
+        wrongBuffer.push(Object.assign({}, currentWord, { streak: 0 }));
     } else {
         wrongBuffer[wi].streak = 0;
     }
@@ -416,16 +505,21 @@ function handleWrong(correct) {
 
 // ─── 计数 ──────────────────────────────────────────────────────
 function updateCount() {
-    const activeTotal = [...mainPool].filter(id => !killedWords.has(id)).length;
-    const completed   = [...answeredIds].filter(id => !killedWords.has(id)).length;
+    const activeTotal = [...mainPool].filter(function(id) { return !killedWords.has(id); }).length;
+    const completed   = [...answeredIds].filter(function(id) { return !killedWords.has(id); }).length;
     dom.count.innerText = Math.max(0, activeTotal - completed);
 }
 
 // ─── 初始化 ────────────────────────────────────────────────────
 async function startApp(mode) {
     currentMode = mode;
-    const fileName = mode === 'verb' ? 'verbs.json' : 'words.json';
-    const limit    = parseInt(localStorage.getItem('fr_limit_' + mode)) || LIMIT_DEFAULT;
+
+    let fileName;
+    if (mode === 'verb')     fileName = 'verbs.json';
+    else if (mode === 'sentence') fileName = 'sentences.json';
+    else                     fileName = 'words.json';
+
+    const limit = parseInt(localStorage.getItem('fr_limit_' + mode)) || LIMIT_DEFAULT;
 
     const savedKilled = localStorage.getItem('fr_killed_' + mode);
     killedWords = new Set(savedKilled ? JSON.parse(savedKilled) : []);
@@ -464,18 +558,17 @@ function saveSettings() {
     closeSettings();
 }
 
-// Fix 3: getVoices() 首次调用常返回空列表（浏览器异步加载声音库）
-//        改为监听 onvoiceschanged 事件，确保拿到法语声音后再朗读
+// Fix 3: onvoiceschanged 事件等声音库加载完毕后再朗读
 function fallbackTTS(text) {
     if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
 
     function doSpeak() {
-        const msg    = new SpeechSynthesisUtterance(text);
-        msg.lang     = 'fr-FR';
-        const frvoc  = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('fr'));
-        msg.voice    = frvoc.find(v => v.name.includes('Siri')) || frvoc[0] || null;
-        msg.rate     = 0.9;
+        const msg   = new SpeechSynthesisUtterance(text);
+        msg.lang    = 'fr-FR';
+        const frvoc = window.speechSynthesis.getVoices().filter(function(v) { return v.lang.startsWith('fr'); });
+        msg.voice   = frvoc.find(function(v) { return v.name.includes('Siri'); }) || frvoc[0] || null;
+        msg.rate    = 0.9;
         window.speechSynthesis.speak(msg);
     }
 
@@ -483,16 +576,24 @@ function fallbackTTS(text) {
         doSpeak();
     } else {
         window.speechSynthesis.onvoiceschanged = function() {
-            window.speechSynthesis.onvoiceschanged = null; // 只触发一次
+            window.speechSynthesis.onvoiceschanged = null;
             doSpeak();
         };
     }
 }
 
 dom.cn.onclick = function() {
-    if (currentWord) speak(currentWord.fr);
+    if (!currentWord) return;
+    if (isSentenceMode()) {
+        // 句子模式：点击中文也可以揭示答案
+        if (!sentenceRevealed) revealSentence();
+        else speak(currentWord.fr);
+    } else {
+        speak(currentWord.fr);
+    }
 };
 
-window.startApp     = startApp;
-window.openSettings = openSettings;
-window.saveSettings = saveSettings;
+window.startApp       = startApp;
+window.openSettings   = openSettings;
+window.saveSettings   = saveSettings;
+window.sentenceJudge  = sentenceJudge;

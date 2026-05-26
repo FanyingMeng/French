@@ -1374,5 +1374,13 @@
 {"id":1373,"cn":"我们设计","fr":"nous concevons","gender":"none"},
 {"id":1374,"cn":"你们设计","fr":"vous concevez","gender":"none"},
 {"id":1375,"cn":"他们设计","fr":"ils conçoivent","gender":"none"},
-{"id":1376,"cn":"她们设计","fr":"elles conçoivent","gender":"none"}
+{"id":1376,"cn":"她们设计","fr":"elles conçoivent","gender":"none"},
+{"id":1377,"cn":"我厌烦","fr":"j'ennuie","gender":"none"},
+{"id":1378,"cn":"你厌烦","fr":"tu ennuies","gender":"none"},
+{"id":1379,"cn":"他厌烦","fr":"il ennuie","gender":"none"},
+{"id":1380,"cn":"她厌烦","fr":"elle ennuie","gender":"none"},
+{"id":1381,"cn":"我们厌烦","fr":"nous ennuyons","gender":"none"},
+{"id":1382,"cn":"你们厌烦","fr":"vous ennuyez","gender":"none"},
+{"id":1383,"cn":"他们厌烦","fr":"ils ennuient","gender":"none"},
+{"id":1384,"cn":"她们厌烦","fr":"elles ennuient","gender":"none"}
 ]

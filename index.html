@@ -11,6 +11,7 @@
             --sb-text: #333;
             --sb-red: #ff5e57;
             --sb-blue: #3498db;
+            --sb-purple: #9b59b6;
         }
 
         body {
@@ -51,8 +52,9 @@
             transition: .2s;
         }
 
-        .btn-word { background: var(--sb-green); }
-        .btn-verb { background: var(--sb-blue); }
+        .btn-word    { background: var(--sb-green); }
+        .btn-verb    { background: var(--sb-blue); }
+        .btn-sentence{ background: var(--sb-purple); }
 
         .mode-btn:hover {
             opacity: .9;
@@ -102,7 +104,13 @@
             transition: color 0.2s;
         }
 
-        /* 强制覆盖：阴性蓝色，阳性红色 */
+        /* 句子模式：中文提示字体小一点 */
+        .word-cn.sentence-mode {
+            font-size: 22px;
+            line-height: 1.5;
+            min-height: 60px;
+        }
+
         .gender-m { color: var(--sb-blue) !important; }
         .gender-f { color: var(--sb-red) !important; }
 
@@ -130,7 +138,7 @@
         }
 
         .success { color: var(--sb-green); }
-        .error { color: var(--sb-red); }
+        .error   { color: var(--sb-red); }
 
         button.action-btn {
             background: var(--sb-green);
@@ -154,16 +162,75 @@
             font-size: 13px;
             cursor: pointer;
             margin-top: 20px;
-            display: none; 
+            display: none;
             transition: .2s;
             align-self: center;
         }
-        
+
         .kill-btn:hover {
             background: #fff0f0;
             color: var(--sb-red);
             border-color: #ffcccc;
         }
+
+        /* ── 句子揭示区 ── */
+        #sentence-reveal-area {
+            display: none;
+            margin-top: 10px;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #sentence-hint {
+            font-size: 13px;
+            color: #bbb;
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        #sentence-answer {
+            font-size: 20px;
+            color: #2c3e50;
+            line-height: 1.6;
+            padding: 16px 20px;
+            background: #f4f9f4;
+            border-radius: 12px;
+            width: 100%;
+            box-sizing: border-box;
+            display: none;
+        }
+
+        /* 记住了 / 没记住 按钮 */
+        .sentence-judge-row {
+            display: none;
+            gap: 12px;
+            margin-top: 18px;
+            width: 100%;
+        }
+
+        .sentence-judge-row button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: .15s;
+        }
+
+        .btn-remembered {
+            background: var(--sb-green);
+            color: white;
+        }
+
+        .btn-forgotten {
+            background: #ffe9e9;
+            color: var(--sb-red);
+        }
+
+        .btn-remembered:hover { opacity: .88; }
+        .btn-forgotten:hover  { opacity: .88; }
 
         #modal {
             display: none;
@@ -200,8 +267,9 @@
 <div class="card">
     <div id="mode-overlay">
         <h2 style="margin-bottom:30px;color:#333;">Bonjour ! <br>请选择学习内容</h2>
-        <button class="mode-btn btn-word" onclick="startApp('word')">📖 普通单词</button>
-        <button class="mode-btn btn-verb" onclick="startApp('verb')">🔄 动词变位</button>
+        <button class="mode-btn btn-word"     onclick="startApp('word')">📖 普通单词</button>
+        <button class="mode-btn btn-verb"     onclick="startApp('verb')">🔄 动词变位</button>
+        <button class="mode-btn btn-sentence" onclick="startApp('sentence')">💬 背诵句子</button>
     </div>
 
     <div class="settings-btn" onclick="openSettings()">⚙️</div>
@@ -210,11 +278,25 @@
 
     <div id="learning-ui" style="display: flex; flex-direction: column;">
         <div class="word-cn" id="display-cn" title="点击听发音">加载中...</div>
+
+        <!-- 普通单词 / 动词变位 输入区 -->
         <div id="word-area">
-            <input type="text" id="single-input" placeholder="输入法语拼写" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <input type="text" id="single-input" placeholder="输入法语拼写"
+                   autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
         </div>
+
+        <!-- 句子模式 揭示区 -->
+        <div id="sentence-reveal-area">
+            <div id="sentence-hint">按 Enter 查看答案</div>
+            <div id="sentence-answer"></div>
+            <div class="sentence-judge-row" id="sentence-judge-row">
+                <button class="btn-remembered" id="btn-remembered" onclick="sentenceJudge(true)">✅ 记住了</button>
+                <button class="btn-forgotten"  id="btn-forgotten"  onclick="sentenceJudge(false)">❌ 没记住</button>
+            </div>
+        </div>
+
         <div class="feedback" id="feedback"></div>
-        
+
         <button id="btn-kill" class="kill-btn">🗑️ 太简单</button>
 
         <div id="finish-area" style="display:none">
