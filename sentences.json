@@ -57,7 +57,7 @@
 {"id":56,"cn":"你是做什么工作的？ / 你靠什么谋生？","fr":"Tu fais quoi dans la vie ?"},
 {"id":57,"cn":"他给了我他的房子、他的车、他的钱，总而言之，一切。","fr":"Il m'a donné sa maison, sa voiture, son argent, tout, quoi."},
 {"id":58,"cn":"那么，姑娘们，告诉我，你们假期去哪里？","fr":"Alors, dites-moi, les filles, vous allez où pendant les vacances ?"},
-{"id":59,"cn":"我要去Arcachon看望我的家人。","fr":"je pars à Arcachon dans ma famille."},
+{"id":59,"cn":"我要去Arcachon看望我的家人。","fr":"je pars à Arcachon pour voir ma famille."},
 {"id":60,"cn":"你的家人住在那儿？","fr":"Ta famille habite là-bas?"},
 {"id":61,"cn":"对，更确切地说，是我的哥哥和他的妻子，还有他们的两个孩子……啊！但我真的很喜欢和他们一起度假！我们去海滩，游泳，玩耍，吃冰激凌，休息……总之，一句话，这就是度假嘛！","fr":"Oui, enfin, mon frère et sa femme. Avec leurs deux enfants. Ah! mais j'adore les vacances avec eux ! On va à la plage, on se baigne, on s'amuse, on mange des glaces, on se repose. Enfin, bref, les vacances, quoi!"},
 {"id":62,"cn":"好吧，祝你玩得开心！但对我来说，海滩可不行。我讨厌海滩！天气太热了……而且我觉得好无聊！","fr":"Eh bien, amuse-toi bien! Mais moi, la plage, je ne peux pas. Je déteste ça ! Il fait trop chaud. Et je m'ennuie !"},
@@ -65,5 +65,18 @@
 {"id":64,"cn":"今年，我和马克打算去Canta的乡下露营。你知道的，我们非常喜欢宁静，大自然和露营，我喜欢这些","fr":"Cette année, avec Max, nous allons faire du camping dans le Cantal, à la campagne. Tu sais, nous, on aime beaucoup le calme, la nature et le camping.On adore ça !"},
 {"id":65,"cn":"我总是去国外。今年，我要去西西里岛待两周，住一家带泳池的酒店。我之前去过两次。那里真的很美，而且我玩得很开心。","fr":"je vais toujours à l'étranger. Cette année, je pars deux semaines en Sicile, dans un hôtel avec piscine. J'y suis allée deux fois. C'est vraiment beau et je me suis bien amusée."},
 {"id":66,"cn":"现在安静下来，别再做白日梦了，因为咖啡茶歇时间结束了。快，开始工作吧！","fr":"calmez-vous maintenant, et arrêtez de rêver, parce que la pause-café, c'est fini. Allez, au travail !"},
-{"id":67,"cn":"我整个周末都在拉罗谢尔（La Rochelle）度过。那里真的很美！","fr":"J'ai passé tout le week-end à La Rochelle. C'est vraiment beau !"}
+{"id":67,"cn":"我整个周末都在拉罗谢尔（La Rochelle）度过。那里真的很美！","fr":"J'ai passé tout le week-end à La Rochelle. C'est vraiment beau !"},
+{"id":68,"cn":"爸爸，我假期可以出发去看索菲（Sophie）吗？","fr":"Papa, je peux partir voir Sophie pendant les vacances ?"},
+{"id":69,"cn":"首先，告诉我，你要去哪儿？","fr":"D'abord, dis-moi, où vas-tu aller ?"},
+{"id":70,"cn":"我要去法国南部的尼斯。她和她的男朋友住在那儿。我们已经有两年没见面了！我们只通了三次电话。","fr":"Je vais aller à Nice, dans le sud de la France. Elle habite là-bas avec son copain. Nous ne nous sommes pas vues pendant 2 ans ! On s'est juste téléphoné 3 fois."},
+{"id":71,"cn":"你以前去过那儿吗？","fr":"Tu y es déjà allée ?"},
+{"id":72,"cn":"没有，这是第一次。","fr":"Non, c'est la première fois."},
+{"id":73,"cn":"我更喜欢和你母亲一起去国外，访问一个寒冷的国家，比如加拿大。我非常喜欢发现新的风景。","fr":"Je préfère partir à l'étranger avec ta mère, visiter un pays froid, comme le Canada. J'aime beaucoup découvrir de nouveaux paysages."},
+{"id":74,"cn":"得了吧，别逗了，加拿大超级冷！你们要小心，多穿点衣服！","fr":"Non mais arrête, le Canada c'est super froid ! Faites attention, couvrez-vous bien !"},
+{"id":75,"cn":"好呀，真盼望假期快点到！","fr":"Oui, vivement les vacances !"},
+{"id":76,"cn":"我今年夏天可以去法国南部吗？","fr":"Je peux partir cet été dans le sud de la France ?"},
+{"id":77,"cn":"可以，去吧，玩得开心，而且要当心（注意安全）。","fr":"Oui, vas-y, amuse-toi bien, et fais attention."},
+{"id":78,"cn":"你几点睡觉？早点睡！","fr":"Tu te couches à quelle heure ? Couche-toi tôt !"},
+{"id":79,"cn":"明天你得早起。好好洗个澡（洗干净）。","fr":"Demain, tu te lèves tôt. Lave-toi bien."},
+{"id":80,"cn":"我以前去过尼斯，那里天气非常热。","fr":"Je suis déjà allé à Nice, il fait très chaud."}
 ]
