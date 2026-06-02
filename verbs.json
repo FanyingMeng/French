@@ -1382,5 +1382,13 @@
 {"id":1381,"cn":"我们厌烦","fr":"nous ennuyons","gender":"none"},
 {"id":1382,"cn":"你们厌烦","fr":"vous ennuyez","gender":"none"},
 {"id":1383,"cn":"他们厌烦","fr":"ils ennuient","gender":"none"},
-{"id":1384,"cn":"她们厌烦","fr":"elles ennuient","gender":"none"}
+{"id":1384,"cn":"她们厌烦","fr":"elles ennuient","gender":"none"},
+{"id":1385,"cn":"我重新找到","fr":"je retrouve","gender":"none"},
+{"id":1386,"cn":"你重新找到","fr":"tu retrouves","gender":"none"},
+{"id":1387,"cn":"他重新找到","fr":"il retrouve","gender":"none"},
+{"id":1388,"cn":"她重新找到","fr":"elle retrouve","gender":"none"},
+{"id":1389,"cn":"我们重新找到","fr":"nous retrouvons","gender":"none"},
+{"id":1390,"cn":"你们重新找到","fr":"vous retrouvez","gender":"none"},
+{"id":1391,"cn":"他们重新找到","fr":"ils retrouvent","gender":"none"},
+{"id":1392,"cn":"她们重新找到","fr":"elles retrouvent","gender":"none"}
 ]
