@@ -1462,5 +1462,6 @@
 {"id":1461,"cn":"我们是(未完成过去时)","fr":"nous étions","gender":"none"},
 {"id":1462,"cn":"你们是(未完成过去时)","fr":"vous étiez","gender":"none"},
 {"id":1463,"cn":"他们是(未完成过去时)","fr":"ils étaient","gender":"none"},
-{"id":1464,"cn":"她们是(未完成过去时)","fr":"elles étaient","gender":"none"}
+{"id":1464,"cn":"她们是(未完成过去时)","fr":"elles étaient","gender":"none"},
+{"id":1465,"cn":"下雨(未完成过去时)","fr":"il pleuvait","gender":"none"}
 ]
