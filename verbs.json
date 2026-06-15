@@ -1463,5 +1463,13 @@
 {"id":1462,"cn":"你们是(未完成过去时)","fr":"vous étiez","gender":"none"},
 {"id":1463,"cn":"他们是(未完成过去时)","fr":"ils étaient","gender":"none"},
 {"id":1464,"cn":"她们是(未完成过去时)","fr":"elles étaient","gender":"none"},
-{"id":1465,"cn":"下雨(未完成过去时)","fr":"il pleuvait","gender":"none"}
+{"id":1465,"cn":"下雨(未完成过去时)","fr":"il pleuvait","gender":"none"},
+{"id":1466,"cn":"我担心","fr":"je m'inquiète","gender":"none"},
+{"id":1467,"cn":"你担心","fr":"tu t'inquiètes","gender":"none"},
+{"id":1468,"cn":"他担心","fr":"il s'inquiète","gender":"none"},
+{"id":1469,"cn":"她担心","fr":"elle s'inquiète","gender":"none"},
+{"id":1470,"cn":"我们担心","fr":"nous nous inquiétons","gender":"none"},
+{"id":1471,"cn":"你们担心","fr":"vous vous inquiétez","gender":"none"},
+{"id":1472,"cn":"他们担心","fr":"ils s'inquiètent","gender":"none"},
+{"id":1473,"cn":"她们担心","fr":"elles s'inquiètent","gender":"none"}
 ]
