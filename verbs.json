@@ -1593,5 +1593,21 @@
 {"id":1592,"cn":"我们死(简单将来时)","fr":"nous mourrons","gender":"none"},
 {"id":1593,"cn":"你们死(简单将来时)","fr":"vous mourrez","gender":"none"},
 {"id":1594,"cn":"他们死(简单将来时)","fr":"ils mourront","gender":"none"},
-{"id":1595,"cn":"她们死(简单将来时)","fr":"elles mourront","gender":"none"}
+{"id":1595,"cn":"她们死(简单将来时)","fr":"elles mourront","gender":"none"},
+{"id":1596,"cn":"我尝试","fr":"j'essaie","gender":"none"},
+{"id":1597,"cn":"你尝试","fr":"tu essaies","gender":"none"},
+{"id":1598,"cn":"他尝试","fr":"il essaie","gender":"none"},
+{"id":1599,"cn":"她尝试","fr":"elle essaie","gender":"none"},
+{"id":1600,"cn":"我们尝试","fr":"nous essayons","gender":"none"},
+{"id":1601,"cn":"你们尝试","fr":"vous essayez","gender":"none"},
+{"id":1602,"cn":"他们尝试","fr":"ils essaient","gender":"none"},
+{"id":1603,"cn":"她们尝试","fr":"elles essaient","gender":"none"},
+{"id":1604,"cn":"我提醒/回电","fr":"je rappelle","gender":"none"},
+{"id":1605,"cn":"你提醒/回电","fr":"tu rappelles","gender":"none"},
+{"id":1606,"cn":"他提醒/回电","fr":"il rappelle","gender":"none"},
+{"id":1607,"cn":"她提醒/回电","fr":"elle rappelle","gender":"none"},
+{"id":1608,"cn":"我们提醒/回电","fr":"nous rappelons","gender":"none"},
+{"id":1609,"cn":"你们提醒/回电","fr":"vous rappelez","gender":"none"},
+{"id":1610,"cn":"他们提醒/回电","fr":"ils rappellent","gender":"none"},
+{"id":1611,"cn":"她们提醒/回电","fr":"elles rappellent","gender":"none"}
 ]
