@@ -1609,5 +1609,13 @@
 {"id":1608,"cn":"我们提醒/回电","fr":"nous rappelons","gender":"none"},
 {"id":1609,"cn":"你们提醒/回电","fr":"vous rappelez","gender":"none"},
 {"id":1610,"cn":"他们提醒/回电","fr":"ils rappellent","gender":"none"},
-{"id":1611,"cn":"她们提醒/回电","fr":"elles rappellent","gender":"none"}
+{"id":1611,"cn":"她们提醒/回电","fr":"elles rappellent","gender":"none"},
+{"id":1612,"cn":"我希望","fr":"j'espère","gender":"none"},
+{"id":1613,"cn":"你希望","fr":"tu espères","gender":"none"},
+{"id":1614,"cn":"他希望","fr":"il espère","gender":"none"},
+{"id":1615,"cn":"她希望","fr":"elle espère","gender":"none"},
+{"id":1616,"cn":"我们希望","fr":"nous espérons","gender":"none"},
+{"id":1617,"cn":"你们希望","fr":"vous espérez","gender":"none"},
+{"id":1618,"cn":"他们希望","fr":"ils espèrent","gender":"none"},
+{"id":1619,"cn":"她们希望","fr":"elles espèrent","gender":"none"}
 ]
