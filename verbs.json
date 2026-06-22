@@ -1641,5 +1641,21 @@
 {"id":1640,"cn":"我们将认识/了解(简单将来时)","fr":"nous connaîtrons","gender":"none"},
 {"id":1641,"cn":"你们将认识/了解(简单将来时)","fr":"vous connaîtrez","gender":"none"},
 {"id":1642,"cn":"他们将认识/了解(简单将来时)","fr":"ils connaîtront","gender":"none"},
-{"id":1643,"cn":"她们将认识/了解(简单将来时)","fr":"elles connaîtront","gender":"none"}
+{"id":1643,"cn":"她们将认识/了解(简单将来时)","fr":"elles connaîtront","gender":"none"},
+{"id":1644,"cn":"我抚养/举起","fr":"j'élève","gender":"none"},
+{"id":1645,"cn":"你抚养/举起","fr":"tu élèves","gender":"none"},
+{"id":1646,"cn":"他抚养/举起","fr":"il élève","gender":"none"},
+{"id":1647,"cn":"她抚养/举起","fr":"elle élève","gender":"none"},
+{"id":1648,"cn":"我们抚养/举起","fr":"nous élevons","gender":"none"},
+{"id":1649,"cn":"你们抚养/举起","fr":"vous élevez","gender":"none"},
+{"id":1650,"cn":"他们抚养/举起","fr":"ils élèvent","gender":"none"},
+{"id":1651,"cn":"她们抚养/举起","fr":"elles élèvent","gender":"none"},
+{"id":1652,"cn":"我支付","fr":"je paie","gender":"none"},
+{"id":1653,"cn":"你支付","fr":"tu paies","gender":"none"},
+{"id":1654,"cn":"他支付","fr":"il paie","gender":"none"},
+{"id":1655,"cn":"她支付","fr":"elle paie","gender":"none"},
+{"id":1656,"cn":"我们支付","fr":"nous payons","gender":"none"},
+{"id":1657,"cn":"你们支付","fr":"vous payez","gender":"none"},
+{"id":1658,"cn":"他们支付","fr":"ils paient","gender":"none"},
+{"id":1659,"cn":"她们支付","fr":"elles paient","gender":"none"}
 ]
