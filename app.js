@@ -18,7 +18,6 @@ let currentData = [];
 let queue       = [];
 let wrongBuffer = [];
 let recentWords = [];
-let killedWords = new Set();
 let answeredIds = new Set();
 
 let currentMode        = null;
@@ -47,7 +46,6 @@ const dom = {
     limitInp:           document.getElementById('limit-input'),
     finishArea:         document.getElementById('finish-area'),
     modeOverlay:        document.getElementById('mode-overlay'),
-    killBtn:            document.getElementById('btn-kill'),
     // 句子模式专用
     sentenceRevealArea: document.getElementById('sentence-reveal-area'),
     sentenceHint:       document.getElementById('sentence-hint'),
@@ -106,7 +104,7 @@ function hashPickWordsOptimized(allWords, dateSeed, limit) {
         while (result.length < newWordCount && offset < allWords.length) {
             const realIndex = (startIndex + offset) % allWords.length;
             const w         = allWords[realIndex];
-            if (!killedWords.has(w.id)) result.push(w);
+            result.push(w);
             offset++;
         }
         return result;
@@ -122,7 +120,7 @@ function hashPickWordsOptimized(allWords, dateSeed, limit) {
     for (const d of intervals) {
         const histNewWords = getNewWordsForDay(dateSeed - d);
         for (const w of histNewWords) {
-            if (!killedWords.has(w.id) && !newWordsMap.has(w.id) && !reviewAdded.has(w.id)) {
+            if (!newWordsMap.has(w.id) && !reviewAdded.has(w.id)) {
                 reviewPool.push(w);
                 reviewAdded.add(w.id);
             }
@@ -132,7 +130,7 @@ function hashPickWordsOptimized(allWords, dateSeed, limit) {
 
     if (reviewPool.length < reviewCount) {
         const fallback = allWords.filter(w =>
-            !killedWords.has(w.id) && !newWordsMap.has(w.id) && !reviewAdded.has(w.id)
+            !newWordsMap.has(w.id) && !reviewAdded.has(w.id)
         );
         fallback.sort((a, b) => pseudoRandom(dateSeed + a.id) - pseudoRandom(dateSeed + b.id));
         reviewPool.push(...fallback.slice(0, reviewCount - reviewPool.length));
@@ -266,7 +264,6 @@ function showWordUI() {
 // ─── 渲染 ──────────────────────────────────────────────────────
 function render() {
     clearTimeout(nextTimer);
-    dom.killBtn.style.display  = 'none';
     dom.feedback.innerText     = '';
 
     if (queue.length === 0 && wrongBuffer.length === 0) {
@@ -317,31 +314,6 @@ function buildStreakBadge(wordId, overrideStreak) {
     return '<span style="font-size:15px; color:#e67e22; background:#fff3e0; padding:4px 10px; border-radius:12px; margin-left:12px; vertical-align:middle; font-weight:normal;">' + streak + '/2</span>';
 }
 
-// ─── 斩词 ──────────────────────────────────────────────────────
-// Fix 2: 立即 display:none，不用 disabled 同帧解锁
-dom.killBtn.onclick = function() {
-    if (!currentWord || dom.killBtn.style.display === 'none') return;
-
-    dom.killBtn.style.display = 'none';
-    clearTimeout(nextTimer);
-
-    killedWords.add(currentWord.id);
-    localStorage.setItem('fr_killed_' + currentMode, JSON.stringify([...killedWords]));
-
-    const qi = queue.findIndex(function(w) { return w.id === currentWord.id; });
-    if (qi !== -1) queue.splice(qi, 1);
-
-    const wi = wrongBuffer.findIndex(function(w) { return w.id === currentWord.id; });
-    if (wi !== -1) wrongBuffer.splice(wi, 1);
-
-    forceCorrectWordId = null;
-
-    showMsg('🔪 已斩！不再出现', 'success');
-    updateCount();
-    saveCurrentSession();
-    setTimeout(function() { render(); }, 800);
-};
-
 // ─── 输入事件（单词/动词模式）────────────────────────────────
 dom.singleInp.onkeypress = function(e) {
     if (e.key !== 'Enter') return;
@@ -367,7 +339,6 @@ dom.singleInp.onkeypress = function(e) {
             dom.singleInp.readOnly      = true;
             dom.singleInp.style.opacity = '0.7';
             dom.singleInp.value         = '';
-            dom.killBtn.style.display   = 'inline-block';
 
             saveCurrentSession();
             nextTimer = setTimeout(function() { render(); }, NEXT_DELAY);
@@ -404,7 +375,6 @@ function revealSentence() {
     dom.sentenceAnswer.style.display = 'block';
     dom.sentenceHint.style.display   = 'none';
     dom.sentenceJudgeRow.style.display = 'flex';
-    dom.killBtn.style.display          = 'inline-block';
 
     // 句子也尝试朗读
     speak(currentWord.fr);
@@ -416,7 +386,6 @@ function sentenceJudge(remembered) {
 
     // 隐藏判断按钮，防止重复点
     dom.sentenceJudgeRow.style.display = 'none';
-    dom.killBtn.style.display          = 'none';
 
     if (remembered) {
         handleCorrect();
@@ -475,7 +444,6 @@ function handleCorrect() {
     if (!isSentenceMode()) {
         dom.singleInp.readOnly      = true;
         dom.singleInp.style.opacity = '0.7';
-        dom.killBtn.style.display   = 'inline-block';
     }
 
     nextTimer = setTimeout(function() { render(); }, NEXT_DELAY);
@@ -498,15 +466,14 @@ function handleWrong(correct) {
 
     showMsg('正确答案: ' + correct, 'error');
     saveCurrentSession();
-    dom.killBtn.style.display = 'inline-block';
 
     dom.cn.innerHTML = currentWord.cn + buildStreakBadge(currentWord.id, 0);
 }
 
 // ─── 计数 ──────────────────────────────────────────────────────
 function updateCount() {
-    const activeTotal = [...mainPool].filter(function(id) { return !killedWords.has(id); }).length;
-    const completed   = [...answeredIds].filter(function(id) { return !killedWords.has(id); }).length;
+    const activeTotal = mainPool.size;
+    const completed   = answeredIds.size;
     dom.count.innerText = Math.max(0, activeTotal - completed);
 }
 
@@ -520,9 +487,6 @@ async function startApp(mode) {
     else                     fileName = 'words.json';
 
     const limit = parseInt(localStorage.getItem('fr_limit_' + mode)) || LIMIT_DEFAULT;
-
-    const savedKilled = localStorage.getItem('fr_killed_' + mode);
-    killedWords = new Set(savedKilled ? JSON.parse(savedKilled) : []);
 
     dom.limitInp.value = limit;
 
