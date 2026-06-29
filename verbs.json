@@ -1681,5 +1681,21 @@
 {"id":1680,"cn":"我们会回答(条件式现在时)","fr":"nous répondrions","gender":"none"},
 {"id":1681,"cn":"你们会回答(条件式现在时)","fr":"vous répondriez","gender":"none"},
 {"id":1682,"cn":"他们会回答(条件式现在时)","fr":"ils répondraient","gender":"none"},
-{"id":1683,"cn":"她们会回答(条件式现在时)","fr":"elles répondraient","gender":"none"}
+{"id":1683,"cn":"她们会回答(条件式现在时)","fr":"elles répondraient","gender":"none"},
+{"id":1684,"cn":"我保护","fr":"je protège","gender":"none"},
+{"id":1685,"cn":"你保护","fr":"tu protèges","gender":"none"},
+{"id":1686,"cn":"他保护","fr":"il protège","gender":"none"},
+{"id":1687,"cn":"她保护","fr":"elle protège","gender":"none"},
+{"id":1688,"cn":"我们保护","fr":"nous protégeons","gender":"none"},
+{"id":1689,"cn":"你们保护","fr":"vous protégez","gender":"none"},
+{"id":1690,"cn":"他们保护","fr":"ils protègent","gender":"none"},
+{"id":1691,"cn":"她们保护","fr":"elles protègent","gender":"none"},
+{"id":1692,"cn":"我融化","fr":"je fonds","gender":"none"},
+{"id":1693,"cn":"你融化","fr":"tu fonds","gender":"none"},
+{"id":1694,"cn":"他融化","fr":"il fond","gender":"none"},
+{"id":1695,"cn":"她融化","fr":"elle fond","gender":"none"},
+{"id":1696,"cn":"我们融化","fr":"nous fondons","gender":"none"},
+{"id":1697,"cn":"你们融化","fr":"vous fondez","gender":"none"},
+{"id":1698,"cn":"他们融化","fr":"ils fondent","gender":"none"},
+{"id":1699,"cn":"她们融化","fr":"elles fondent","gender":"none"}
 ]
