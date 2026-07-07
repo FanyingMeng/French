@@ -22,6 +22,9 @@
 //          句子的录音，导致经常无声却不触发本地语音兜底。改为句子模式
 //          直接使用本地 Mac 系统语音（Web Speech API），并优先选取
 //          localService 的本地法语人声（Thomas/Amelie 等），音质更好。
+//   Fix 7. 词库全部学完一轮后（不再有"从没学过"的词），自动清空该模式
+//          的 SRS 记录，从 id 1 重新开始完整学一遍，循环往复，避免停
+//          留在"全部变成超长间隔复习、每天凑不满数量"的状态。
 // ═══════════════════════════════════════════════════════════════
 
 let currentData = [];
@@ -158,7 +161,16 @@ function buildTodayQueueSRS(allWords, mode, limit) {
     const newWordCount = Math.floor(limit * 0.5);
     const reviewCount  = limit - newWordCount;
     const dateSeed     = todayDateSeed();
-    const srs          = loadSRS(mode);
+    let   srs          = loadSRS(mode);
+
+    // Fix 7: 词库里已经没有"从没学过"的词了，说明已经完整走完一轮——
+    //        清空这个模式的 SRS 记录，从 id 1 开始重新完整学一遍，
+    //        循环往复，不会停在"全部变成超长间隔复习"的状态。
+    const hasUnlearned = allWords.some(w => !srs[w.id]);
+    if (!hasUnlearned) {
+        srs = {};
+        saveSRS(mode, srs);
+    }
 
     // ① 到期复习词：已学过、且到期日 <= 今天，越早到期越优先出现
     const dueWords = allWords
@@ -178,7 +190,7 @@ function buildTodayQueueSRS(allWords, mode, limit) {
 
     let combined = [...newSelected, ...reviewSelected];
 
-    // ③ 兜底：新词也不够、到期复习词也不够（比如词库快学完了）时，
+    // ③ 兜底：新词也不够、到期复习词也不够（比如刚好在轮回交界处）时，
     //    用还没到期但最快到期的词补满，保证每天都有内容可学
     if (combined.length < limit) {
         const usedIds   = new Set(combined.map(w => w.id));
@@ -595,7 +607,7 @@ function fallbackTTS(text) {
             || null;
 
         msg.rate = 0.9;
-        window.speechSynthesis.speak(msg); 
+        window.speechSynthesis.speak(msg);
     }
 
     if (window.speechSynthesis.getVoices().length > 0) {
