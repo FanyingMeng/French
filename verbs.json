@@ -1779,5 +1779,13 @@
 {"id":1778,"cn":"他们应该（虚拟式现在时）","fr":"qu'ils doivent","gender":"none"},
 {"id":1779,"cn":"她们应该（虚拟式现在时）","fr":"qu'elles doivent","gender":"none"},
 {"id":1780,"cn":"下雨（虚拟式现在时）","fr":"qu'il pleuve","gender":"none"},
-{"id":1781,"cn":"必须/应该（虚拟式现在时）","fr":"qu'il faille","gender":"none"}
+{"id":1781,"cn":"必须/应该（虚拟式现在时）","fr":"qu'il faille","gender":"none"},
+{"id":1782,"cn":"我加入/联系(j)","fr":"je joins","gender":"none"},
+{"id":1783,"cn":"你加入/联系(j)","fr":"tu joins","gender":"none"},
+{"id":1784,"cn":"他加入/联系(j)","fr":"il joint","gender":"none"},
+{"id":1785,"cn":"她加入/联系(j)","fr":"elle joint","gender":"none"},
+{"id":1786,"cn":"我们加入/联系(j)","fr":"nous joignons","gender":"none"},
+{"id":1787,"cn":"你们加入/联系(j)","fr":"vous joignez","gender":"none"},
+{"id":1788,"cn":"他们加入/联系(j)","fr":"ils joignent","gender":"none"},
+{"id":1789,"cn":"她们加入/联系(j)","fr":"elles joignent","gender":"none"}
 ]
