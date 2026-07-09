@@ -44,6 +44,8 @@ let sentenceRevealed = false;
 
 let nextTimer = null;
 
+let todayProgressInfo = null; // { newIds: [...], reviewIds: [...] }，用于页面顶部进度展示
+
 const LIMIT_DEFAULT       = 100;
 const NEXT_DELAY          = 1200;
 const NEW_WORD_INTERVAL   = 3;
@@ -64,6 +66,7 @@ const dom = {
     sentenceHint:       document.getElementById('sentence-hint'),
     sentenceAnswer:     document.getElementById('sentence-answer'),
     sentenceJudgeRow:   document.getElementById('sentence-judge-row'),
+    progressInfo:       document.getElementById('progress-info'),
 };
 
 // ─── 是否句子模式 ──────────────────────────────────────────────
@@ -156,7 +159,10 @@ function srsReset(mode, wordId) {
 
 function buildTodayQueueSRS(allWords, mode, limit) {
     limit = limit || 100;
-    if (!allWords || allWords.length === 0) return [];
+    if (!allWords || allWords.length === 0) {
+        todayProgressInfo = null;
+        return [];
+    }
 
     const newWordCount = Math.floor(limit * 0.5);
     const reviewCount  = limit - newWordCount;
@@ -188,17 +194,27 @@ function buildTodayQueueSRS(allWords, mode, limit) {
 
     const newSelected = unlearned.slice(0, newWordCount + Math.max(0, leftoverReviewSlot));
 
-    let combined = [...newSelected, ...reviewSelected];
+    let reviewFinal = [...reviewSelected];
+    let combined    = [...newSelected, ...reviewSelected];
 
     // ③ 兜底：新词也不够、到期复习词也不够（比如刚好在轮回交界处）时，
     //    用还没到期但最快到期的词补满，保证每天都有内容可学
+    //    （这部分本质也是"提前借来的复习词"，记进 reviewFinal 一起统计）
     if (combined.length < limit) {
         const usedIds   = new Set(combined.map(w => w.id));
         const notDueYet = allWords
             .filter(w => srs[w.id] && !usedIds.has(w.id))
             .sort((a, b) => srs[a.id].dueDate - srs[b.id].dueDate);
-        combined.push(...notDueYet.slice(0, limit - combined.length));
+        const extra = notDueYet.slice(0, limit - combined.length);
+        reviewFinal = reviewFinal.concat(extra);
+        combined    = combined.concat(extra);
     }
+
+    // 记录今天的新词 id 列表 / 复习词 id 列表，供页面顶部进度展示使用
+    todayProgressInfo = {
+        newIds:    newSelected.map(w => w.id),
+        reviewIds: reviewFinal.map(w => w.id)
+    };
 
     // ④ 当天出场顺序打乱（确定性伪随机，保证同一天多次打开顺序一致）
     combined.sort((a, b) =>
@@ -206,6 +222,16 @@ function buildTodayQueueSRS(allWords, mode, limit) {
     );
 
     return combined;
+}
+
+function renderProgressHeader() {
+    if (!dom.progressInfo) return;
+    if (!todayProgressInfo || !todayProgressInfo.newIds || todayProgressInfo.newIds.length === 0) {
+        dom.progressInfo.textContent = '';
+        return;
+    }
+    const maxId = Math.max(...todayProgressInfo.newIds);
+    dom.progressInfo.textContent = '进度：' + maxId;
 }
 
 // ─── 今日进度持久化 ────────────────────────────────────────────
@@ -560,6 +586,7 @@ async function startApp(mode) {
     dom.modeOverlay.style.display = 'none';
 
     buildQueue(limit);
+    renderProgressHeader();
     render();
 }
 

@@ -91,6 +91,14 @@
             margin-bottom: 30px;
         }
 
+        .progress-info {
+            font-size: 12px;
+            color: #bbb;
+            margin-top: 8px;
+            margin-bottom: 6px;
+            letter-spacing: 0.3px;
+        }
+
         #count {
             color: var(--sb-green);
             font-weight: bold;
@@ -110,7 +118,7 @@
             font-size: 22px;
             line-height: 1.5;
             min-height: 60px;
-            text-align: left;
+            text-align: right;
             white-space: pre-line;
             word-wrap: break-word;
         }
@@ -182,7 +190,7 @@
             width: 100%;
             box-sizing: border-box;
             display: none;
-            text-align: left;
+            text-align: right;
             white-space: normal;
             word-wrap: break-word;
         }
@@ -260,6 +268,8 @@
     </div>
 
     <div class="settings-btn" onclick="openSettings()">⚙️</div>
+
+    <div class="progress-info" id="progress-info"></div>
 
     <div class="header">待完成: <span id="count">0</span></div>
 
