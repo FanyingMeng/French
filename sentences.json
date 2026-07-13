@@ -1,11 +1,14 @@
 [
-{"id":1,"cn":"旅行天气","fr":"Quel temps fait-il à Montréal ? \nQuelle est la meilleure saison pour y aller ? \nEst-ce qu’il pleut souvent ? \nEst-ce qu’il fait chaud ou froid ?"},
+{"id":1,"cn":"旅行天气","fr":"Quel temps fait-il à Montréal ? \nQuelle est la meilleure saison pour y aller ? \nEst-ce qu’il pleut souvent ? \nEst-ce qu’il fait chaud ou froid ?\nQuels vêtements faut-il prévoir ?\nFaut-il prévoir quelque chose de particulier ?"},
 {"id":2,"cn":"旅行景点","fr":"Qu’est-ce qu’on peut visiter ?\nQuels sont les sites à découvrir ? \nQuels sont les endroits les plus célèbres ?"},
 {"id":3,"cn":"旅行活动","fr":"Qu’est-ce qu’on peut faire là-bas ? \nEst-ce qu’il y a des activités culturelles ? \nPeut-on faire du shopping ? \nY a-t-il des festivals ?"},
 {"id":4,"cn":"旅行美食","fr":"Quelle est la spécialité locale ? \nEst-ce que la nourriture est bonne ? \nEst-ce qu’il y a beaucoup de restaurants ?"},
-{"id":5,"cn":"旅行酒店","fr":"Quel type d’hôtel proposez-vous ?\nEst-ce que les hôtels sont chers ?\nFaut-il réserver à l’avance ? \nEst-ce qu’il est près du centre-ville ? \nLe petit-déjeuner est-il compris ?"},
+{"id":5,"cn":"旅行酒店","fr":"Où allez-vous loger ?\nQuel type d’hôtel proposez-vous ?\nEst-ce que les hôtels sont chers ?\nFaut-il réserver à l’avance ? \nEst-ce qu’il est près du centre-ville ? \nLe petit-déjeuner est-il compris ?"},
 {"id":6,"cn":"旅行预算","fr":"Combien coûte le voyage ? \nQuel budget faut-il prévoir ?\nEst-ce que c’est une destination chère ? \nCombien faut-il prévoir par jour ? \nLes repas sont-ils inclus ?"},
 {"id":7,"cn":"旅行交通","fr":"Comment peut-on se déplacer ? \nCombien de temps faut-il pour y aller ?\nY a-t-il des transports en commun ?\nEst-ce que les transports en commun sont pratiques ? \nEst-ce qu’on peut louer une voiture ?"},
-{"id":8,"cn":"旅行时长","fr":"Combien de temps dure le voyage？\nDe quelle date à quelle date dure le voyage ?\nQuelle est la date de départ ?\nQuelle est la date de retour ?"},
-{"id":9,"cn":"照看公寓","fr":"Où sont les clés ? \nQue dois-je faire exactement ? \nÀ quelle fréquence dois-je venir ? \nAvez-vous des plantes ? \nAvez-vous un animal ? \nQue dois-je faire en cas d’urgence ? \nQui dois-je appeler ? \nY a-t-il d’autres consignes ? \nEst-ce que j’ai oublié quelque chose ?"}
+{"id":8,"cn":"旅行时间","fr":"Quelles sont les dates du voyage ?\nCombien de temps dure le voyage？\nDe quelle date à quelle date dure le voyage ?\nQuelle est la date de départ ?\nQuelle est la date de retour ?"},
+{"id":9,"cn":"照看公寓","fr":"Où sont les clés ? \nQue dois-je faire exactement ? \nÀ quelle fréquence dois-je venir ? \nAvez-vous des plantes ? \nAvez-vous un animal ? \nQue dois-je faire en cas d’urgence ? \nQui dois-je appeler ? \nY a-t-il d’autres consignes ? \nEst-ce que j’ai oublié quelque chose ?"},
+{"id":10,"cn":"出租公寓","fr":"Quel tarif me conseillez-vous ?\nQuelle est la meilleure période pour louer ?\nQuel type de locataires puis-je accepter ?\nEst-ce que je dois signer un contrat ?\nFaut-il prévoir quelque chose de particulier ?\nQuels documents sont nécessaires ?\nQui s’occupe du ménage ?\nCombien coûte votre service ?"},
+{"id":11,"cn":"询问旅行社","fr":"Quelles destinations proposez-vous ?\nCombien coûte le voyage ?\nQue comprend le prix ?\nÀ quelle heure part-on ?"},
+{"id":12,"cn":"询问电影","fr":"De quel genre est-il exactement ?\nIl dure combien de temps ?\nQui joue dans ce film ?\nEst-ce que tu as aimé le film ?"}
 ]
