@@ -75,7 +75,7 @@
 {"id":74,"cn":"魁北克的","fr":"québécoise","gender":"f"},
 {"id":75,"cn":"经常，常常","fr":"souvent","gender":"none"},
 {"id":76,"cn":"排球，排球运动","fr":"volley-ball","gender":"m"},
-{"id":77,"cn":"海报，广告","fr":"affiche","gender":"f"},
+{"id":77,"cn":"张贴一张海报/广告","fr":"afficher une affiche","gender":"f"},
 {"id":78,"cn":"打碎一个盘子","fr":"casser une assiette","gender":"none"},
 {"id":79,"cn":"在...下面","fr":"au-dessous de","gender":"none"},
 {"id":80,"cn":"在...上面","fr":"au-dessus de","gender":"none"},
@@ -2864,5 +2864,8 @@
 {"id":2863,"cn":"彩椒，甜椒","fr":"poivron","gender":"m"},
 {"id":2864,"cn":"一些各种各样的书","fr":"des livres de toutes sortes","gender":"none"},
 {"id":2865,"cn":"一种...，某种...","fr":"une sorte de","gender":"none"},
-{"id":2866,"cn":"表现糟糕，举止不当","fr":"se comporte mal","gender":"none"}
+{"id":2866,"cn":"表现糟糕，举止不当","fr":"se comporte mal","gender":"none"},
+{"id":2867,"cn":"别客气，不用谢（正式/复数）","fr":"je vous en prie","gender":"none"},
+{"id":2868,"cn":"发表一个评论，张贴一张公告","fr":"afficher un avis","gender":"none"},
+{"id":2869,"cn":"复印机","fr":"photocopieuse","gender":"f"}
 ]
