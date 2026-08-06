@@ -422,7 +422,7 @@
 {"id":421,"cn":"哭，流泪","fr":"pleurer","gender":"none"},
 {"id":422,"cn":"在生活中","fr":"dans la vie","gender":"none"},
 {"id":423,"cn":"喜爱，热爱","fr":"adorer","gender":"none"},
-{"id":424,"cn":"暂停，休息","fr":"pause","gender":"f"},
+{"id":424,"cn":"一个独居的生活","fr":"Une vie solitaire","gender":"none"},
 {"id":425,"cn":"律师；牛油果","fr":"avocat","gender":"m"},
 {"id":426,"cn":"律师","fr":"avocate","gender":"f"},
 {"id":427,"cn":"从事医生的职业(m打头这个词，阳性表示医生职业)","fr":"pratiquer le métier de médecin","gender":"none"},
@@ -1037,7 +1037,7 @@
 {"id":1036,"cn":"专业摄影","fr":"la photographie professionnelle","gender":"none"},
 {"id":1037,"cn":"整个上午；一整个早上","fr":"toute la matinée","gender":"none"},
 {"id":1038,"cn":"演戏；从事戏剧活动；（在学校）参加戏剧社/上戏剧课","fr":"faire du théâtre","gender":"none"},
-{"id":1039,"cn":"上一些戏剧课","fr":"prendre des cours de théâtre","gender":"none"},
+{"id":1039,"cn":"上(p)一些戏剧课","fr":"prendre des cours de théâtre","gender":"none"},
 {"id":1040,"cn":"特别是，尤其是；主要是","fr":"surtout","gender":"none"},
 {"id":1041,"cn":"想当体育老师","fr":"vouloir être professeur de sport","gender":"none"},
 {"id":1042,"cn":"小姐（对未婚女子的称呼）","fr":"mademoiselle","gender":"f"},
@@ -1064,7 +1064,7 @@
 {"id":1063,"cn":"面包店","fr":"boulangerie","gender":"f"},
 {"id":1064,"cn":"奶酪店","fr":"fromagerie","gender":"f"},
 {"id":1065,"cn":"教一些音乐(阴性)课","fr":"donner des cours de musique","gender":"none"},
-{"id":1066,"cn":"上一些舞蹈(阴性)课","fr":"suivre des cours de danse","gender":"none"},
+{"id":1066,"cn":"上(s)一些舞蹈(阴性)课","fr":"suivre des cours de danse","gender":"none"},
 {"id":1067,"cn":"一个工人家庭","fr":"une famille ouvrière","gender":"none"},
 {"id":1068,"cn":"不停地，不断地","fr":"sans arrêt","gender":"none"},
 {"id":1069,"cn":"后天","fr":"après-demain","gender":"none"},
@@ -1087,7 +1087,7 @@
 {"id":1086,"cn":"想要,意欲...（词组,后面 + n./ v.）","fr":"avoir envie de","gender":"none"},
 {"id":1087,"cn":"容易地, 轻易地","fr":"facilement","gender":"none"},
 {"id":1088,"cn":"客厅","fr":"salon","gender":"m"},
-{"id":1089,"cn":"装修, 翻修","fr":"faire des travaux","gender":"none"},
+{"id":1089,"cn":"做一些装修, 翻修","fr":"faire des travaux","gender":"none"},
 {"id":1090,"cn":"犯错，不对","fr":"avoir tort","gender":"none"},
 {"id":1091,"cn":"平均","fr":"en moyenne","gender":"none"},
 {"id":1092,"cn":"增加人口数量 / 增加居民人数","fr":"augmenter le nombre d'habitants","gender":"none"},
@@ -3248,6 +3248,5 @@
 {"id":3247,"cn":"把两个班合并成一个","fr":"regrouper deux classes en une seule","gender":"none"},
 {"id":3248,"cn":"合并，重组，聚集(n.)","fr":"regroupement","gender":"m"},
 {"id":3249,"cn":"聚集在……周围","fr":"se regrouper autour de","gender":"none"},
-{"id":3250,"cn":"忍受孤独，饱受孤独之苦","fr":"souffrir de la solitude","gender":"none"},
-{"id":3251,"cn":"一个独居的生活","fr":"Une vie solitaire","gender":"none"}
+{"id":3250,"cn":"忍受孤独，饱受孤独之苦","fr":"souffrir de la solitude","gender":"none"}
 ]
