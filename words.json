@@ -3549,5 +3549,7 @@
 {"id":3548,"cn":"以高价出售","fr":"vendre à un prix élevé","gender":"none"},
 {"id":3549,"cn":"以低价出售，廉价出售","fr":"vendre à bas prix","gender":"none"},
 {"id":3550,"cn":"卖产品（复数）卖得贵","fr":"vendre les produits cher","gender":"none"},
-{"id":3551,"cn":"对此的一个原因，这其中的原因","fr":"une raison à cela","gender":"none"}
+{"id":3551,"cn":"对此的一个原因，这其中的原因","fr":"une raison à cela","gender":"none"},
+{"id":3552,"cn":"把一些花插进一个花瓶里","fr":"mettre des fleurs dans un vase","gender":"none"},
+{"id":3553,"cn":"在环岛处，在环形交叉路口","fr":"au rond-point","gender":"none"}
 ]
