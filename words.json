@@ -1450,7 +1450,7 @@
 {"id":1449,"cn":"工作没你认真","fr":"travailler moins sérieusement que toi","gender":"none"},
 {"id":1450,"cn":"说(p)得和老师一样清楚","fr":"parler aussi clairement que le professeur","gender":"none"},
 {"id":1451,"cn":"回答得比我快","fr":"répondre plus rapidement que moi","gender":"none"},
-{"id":1452,"cn":"比我有更多时间","fr":"plus de temps que moi","gender":"none"},
+{"id":1452,"cn":"比我 更多时间","fr":"plus de temps que moi","gender":"none"},
 {"id":1453,"cn":"比你钱少","fr":"moins d'argent que toi","gender":"none"},
 {"id":1454,"cn":"和他一样多朋友","fr":"autant d'amis que lui","gender":"none"},
 {"id":1455,"cn":"比图书馆还多书","fr":"plus de livres que la bibliothèque","gender":"none"},
@@ -2878,7 +2878,7 @@
 {"id":2877,"cn":"锅铲","fr":"spatule","gender":"f"},
 {"id":2878,"cn":"开罐器","fr":"ouvre-boîte","gender":"m"},
 {"id":2879,"cn":"开瓶器，拔木塞钻","fr":"tire-bouchon","gender":"m"},
-{"id":2880,"cn":"砧板，切菜板","fr":"planche à découper","gender":"f"},
+{"id":2880,"cn":"事实就是这样，没有别的可能 / 事情就是如此，没得商量","fr":"C'est comme ça et pas autrement","gender":"none"},
 {"id":2881,"cn":"冰箱 (frigo)","fr":"réfrigérateur","gender":"m"},
 {"id":2882,"cn":"烤箱","fr":"four","gender":"m"},
 {"id":2883,"cn":"微波炉","fr":"micro-ondes","gender":"m"},
@@ -3230,7 +3230,7 @@
 {"id":3229,"cn":"停车(v.)","fr":"se garer","gender":"none"},
 {"id":3230,"cn":"正在做……","fr":"être en train de faire","gender":"none"},
 {"id":3231,"cn":"在楼梯顶端，在楼梯上头","fr":"en haut de l'escalier","gender":"none"},
-{"id":3232,"cn":"面临一个挑战","fr":"être face à un défi","gender":"none"},
+{"id":3232,"cn":"面对一个挑战","fr":"faire face à un défi","gender":"none"},
 {"id":3233,"cn":"面对面讨论","fr":"discuter face à face","gender":"none"},
 {"id":3234,"cn":"爱上，被……所迷住（c）","fr":"tomber sous le charme de","gender":"none"},
 {"id":3235,"cn":"处于节日氛围中，在庆典中","fr":"en fête","gender":"none"},
@@ -3632,6 +3632,5 @@
 {"id":3631,"cn":"几片薄火腿","fr":"des tranches fines de jambon","gender":"f"},
 {"id":3632,"cn":"可以说…… / 姑且算是…… / 假设……","fr":"Disons que","gender":"none"},
 {"id":3633,"cn":"一共是5欧元 / 您总共需付5欧元","fr":"Ça vous fait 5 euros","gender":"none"},
-{"id":3634,"cn":"带qn去…… /送某人去……","fr":"emmener qn à","gender":"none"},
-{"id":3635,"cn":"事实就是这样，没有别的可能 / 事情就是如此，没得商量","fr":"C'est comme ça et pas autrement","gender":"none"}
+{"id":3634,"cn":"带qn去…… /送某人去……","fr":"emmener qn à","gender":"none"}
 ]

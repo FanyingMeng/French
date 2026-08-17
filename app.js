@@ -25,6 +25,17 @@
 //   Fix 7. 词库全部学完一轮后（不再有"从没学过"的词），自动清空该模式
 //          的 SRS 记录，从 id 1 重新开始完整学一遍，循环往复，避免停
 //          留在"全部变成超长间隔复习、每天凑不满数量"的状态。
+//   Fix 8. buildTodayQueueSRS 每次都是"实时"用当前 SRS 状态现算今天的
+//          题库；一个词今天刚答对时，它的新 dueDate（如"明天"）是所有
+//          已学词里最近的，导致题量不够时的"兜底填坑"逻辑会把它自己
+//          捞回来。平时靠 session 里的 queueIds 挡住不会真的显示出来，
+//          但只要 session 被清空（比如改每日数量设置时的
+//          clearCurrentSession()），题库会直接用重新算出来的、被污染
+//          的 fullTodayQueue，已经答对的词就会重新出现。改为额外维护
+//          一份跨 session 持久化的"今天已过关词"名单（fr_answered_today_
+//          <mode>），从候选池（到期复习/新词/兜底填坑）里硬性排除，
+//          不受 session 清没清、设置改没改、页面刷不刷新影响；名单按
+//          日期自动失效，不需要额外清理逻辑。
 // ═══════════════════════════════════════════════════════════════
 
 let currentData = [];
@@ -157,6 +168,38 @@ function srsReset(mode, wordId) {
     saveSRS(mode, srs);
 }
 
+// ─── Fix 8: 今日已过关词名单（跨 session 持久化）──────────────
+//
+//  只要一个词今天已经被答对过（首次直接答对，或错题订正 2 次过关），
+//  就写进这份名单。它独立于 buildQueue/session 的生命周期——不会因为
+//  clearCurrentSession()（比如改每日数量设置）而被清掉。
+//  buildTodayQueueSRS 在选新词/复习词/兜底填坑词时都会排除这份名单里
+//  的词，从根上防止"今天刚答对的词又被算回题库里"。
+//  名单按 dateSeed 存储，跨天读取时自动失效，不需要额外清理逻辑。
+
+function loadAnsweredToday(mode) {
+    const raw = localStorage.getItem('fr_answered_today_' + mode);
+    if (raw) {
+        try {
+            const parsed = JSON.parse(raw);
+            if (parsed && parsed.dateSeed === todayDateSeed() && Array.isArray(parsed.ids)) {
+                return parsed;
+            }
+        } catch (e) {
+            // 解析失败按空名单处理
+        }
+    }
+    return { dateSeed: todayDateSeed(), ids: [] };
+}
+
+function markAnsweredToday(mode, wordId) {
+    const state = loadAnsweredToday(mode);
+    if (!state.ids.includes(wordId)) {
+        state.ids.push(wordId);
+        localStorage.setItem('fr_answered_today_' + mode, JSON.stringify(state));
+    }
+}
+
 function buildTodayQueueSRS(allWords, mode, limit) {
     limit = limit || 100;
     if (!allWords || allWords.length === 0) {
@@ -169,6 +212,9 @@ function buildTodayQueueSRS(allWords, mode, limit) {
     const dateSeed     = todayDateSeed();
     let   srs          = loadSRS(mode);
 
+    // Fix 8: 今天已经答对过关的词，任何候选池都不能再选中它
+    const answeredToday = new Set(loadAnsweredToday(mode).ids);
+
     // Fix 7: 词库里已经没有"从没学过"的词了，说明已经完整走完一轮——
     //        清空这个模式的 SRS 记录，从 id 1 开始重新完整学一遍，
     //        循环往复，不会停在"全部变成超长间隔复习"的状态。
@@ -179,8 +225,9 @@ function buildTodayQueueSRS(allWords, mode, limit) {
     }
 
     // ① 到期复习词：已学过、且到期日 <= 今天，越早到期越优先出现
+    //    （排除今天已经过关的词，见 Fix 8）
     const dueWords = allWords
-        .filter(w => srs[w.id] && srs[w.id].dueDate <= dateSeed)
+        .filter(w => srs[w.id] && srs[w.id].dueDate <= dateSeed && !answeredToday.has(w.id))
         .sort((a, b) => srs[a.id].dueDate - srs[b.id].dueDate);
 
     const reviewSelected     = dueWords.slice(0, reviewCount);
@@ -188,8 +235,9 @@ function buildTodayQueueSRS(allWords, mode, limit) {
 
     // ② 新词：还没有 SRS 记录的词，按 id 升序（=添加进词库的顺序）依次取
     //    到期复习词不够时，多出来的名额用来多学一些新词
+    //    （排除今天已经过关的词，见 Fix 8——理论上不会有交集，加上更保险）
     const unlearned = allWords
-        .filter(w => !srs[w.id])
+        .filter(w => !srs[w.id] && !answeredToday.has(w.id))
         .sort((a, b) => a.id - b.id);
 
     const newSelected = unlearned.slice(0, newWordCount + Math.max(0, leftoverReviewSlot));
@@ -200,10 +248,12 @@ function buildTodayQueueSRS(allWords, mode, limit) {
     // ③ 兜底：新词也不够、到期复习词也不够（比如刚好在轮回交界处）时，
     //    用还没到期但最快到期的词补满，保证每天都有内容可学
     //    （这部分本质也是"提前借来的复习词"，记进 reviewFinal 一起统计）
+    //    Fix 8: 这里最容易把"今天刚答对、dueDate 最近"的词错误地捞
+    //    回来，必须排除 answeredToday。
     if (combined.length < limit) {
         const usedIds   = new Set(combined.map(w => w.id));
         const notDueYet = allWords
-            .filter(w => srs[w.id] && !usedIds.has(w.id))
+            .filter(w => srs[w.id] && !usedIds.has(w.id) && !answeredToday.has(w.id))
             .sort((a, b) => srs[a.id].dueDate - srs[b.id].dueDate);
         const extra = notDueYet.slice(0, limit - combined.length);
         reviewFinal = reviewFinal.concat(extra);
@@ -514,6 +564,7 @@ function handleCorrect() {
         if (newStreak >= 2) {
             wrongBuffer.splice(wi, 1);
             answeredIds.add(currentWord.id);
+            markAnsweredToday(currentMode, currentWord.id); // Fix 8: 记入今日已过关名单
             srsReset(currentMode, currentWord.id); // 印象不牢，退回最短间隔，明天必见
             dom.cn.innerHTML = currentWord.cn + buildStreakBadge(currentWord.id, 2);
         } else {
@@ -523,6 +574,7 @@ function handleCorrect() {
         mainAnsweredCount = 0;
     } else {
         answeredIds.add(currentWord.id);
+        markAnsweredToday(currentMode, currentWord.id); // Fix 8: 记入今日已过关名单
         mainAnsweredCount++;
         srsAdvance(currentMode, currentWord.id); // 一遍就过，长期间隔正常递增
     }
