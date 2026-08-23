@@ -3497,7 +3497,7 @@
 {"id":3496,"cn":"有地方/空间做...","fr":"avoir de la place pour faire","gender":"none"},
 {"id":3497,"cn":"茶几","fr":"la table basse","gender":"none"},
 {"id":3498,"cn":"对某事做得过分","fr":"exagérer avec qch","gender":"none"},
-{"id":3499,"cn":"夸大他/她的问题(复数)","fr":"exagère ses problèmes","gender":"none"},
+{"id":3499,"cn":"夸大他/她的问题(复数)","fr":"exagérer ses problèmes","gender":"none"},
 {"id":3500,"cn":"床头柜","fr":"la table de nuit","gender":"none"},
 {"id":3501,"cn":"餐桌","fr":"la table à manger","gender":"none"},
 {"id":3502,"cn":"改变家具(复数)的位置","fr":"changer les meubles de place","gender":"none"},
@@ -3742,5 +3742,14 @@
 {"id":3741,"cn":"让我们大失所望的是 / 令我们非常失望的是","fr":"à notre grande déception","gender":"none"},
 {"id":3742,"cn":"对……真诚(adj.阴阳同形) / 真心对待……","fr":"être sincère avec","gender":"none"},
 {"id":3743,"cn":"真诚地 / 衷心地 / 坦率地(adv.)","fr":"sincèrement","gender":"none"},
-{"id":3744,"cn":"随身带着qch / 身上有某物","fr":"avoir qch sur soi","gender":"none"}
+{"id":3744,"cn":"随身带着qch / 身上有某物","fr":"avoir qch sur soi","gender":"none"},
+{"id":3745,"cn":"到了……的时间 / 是时候……了","fr":"C'est l'heure de","gender":"none"},
+{"id":3746,"cn":"天阴 / 天色阴沉（句子）","fr":"Il fait gris","gender":"none"},
+{"id":3747,"cn":"将会有…… / 马上要有……","fr":"il va y avoir","gender":"none"},
+{"id":3748,"cn":"天气将会很糟糕(句子)","fr":"il va faire mauvais","gender":"none"},
+{"id":3749,"cn":"零下2度 / 负2度","fr":"Moins 2 degrés","gender":"none"},
+{"id":3750,"cn":"气温将上升。(句子)","fr":"La température va monter.","gender":"none"},
+{"id":3751,"cn":"天气会变热。(句子)","fr":"Il va faire plus chaud.","gender":"none"},
+{"id":3752,"cn":"天气会变冷。(句子)","fr":"Il va faire plus froid.","gender":"none"},
+{"id":3753,"cn":"气温将下降。(句子)","fr":"La température va baisser.","gender":"none"}
 ]
