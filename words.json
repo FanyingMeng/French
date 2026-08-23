@@ -3559,8 +3559,8 @@
 {"id":3558,"cn":"随行人员，向导，伴奏者（女性）","fr":"accompagnatrice","gender":"f"},
 {"id":3559,"cn":"一个演出厅，剧场，演艺大厅","fr":"une salle de spectacle","gender":"none"},
 {"id":3560,"cn":"全都到齐，都在这里","fr":"être tous là","gender":"none"},
-{"id":3561,"cn":"您真是太客气了 / 您真好","fr":"C'est très aimable à vous.","gender":"none"},
-{"id":3562,"cn":"我很清楚 / 我确实知道","fr":"Je sais bien.","gender":"none"},
+{"id":3561,"cn":"您真是太客气了 / 您真好","fr":"C'est très aimable à vous","gender":"none"},
+{"id":3562,"cn":"我很清楚 / 我确实知道","fr":"Je sais bien","gender":"none"},
 {"id":3563,"cn":"按小时数计酬，按工时领薪","fr":"être payé au nombre d'heures","gender":"m"},
 {"id":3564,"cn":"为公司订阅这项服务","fr":"abonner l'entreprise à ce service","gender":"none"},
 {"id":3565,"cn":"新电影的预告片","fr":"la bande-annonce du nouveau film","gender":"none"},
@@ -3748,8 +3748,8 @@
 {"id":3747,"cn":"将会有…… / 马上要有……","fr":"il va y avoir","gender":"none"},
 {"id":3748,"cn":"天气将会很糟糕(句子)","fr":"il va faire mauvais","gender":"none"},
 {"id":3749,"cn":"零下2度 / 负2度","fr":"Moins 2 degrés","gender":"none"},
-{"id":3750,"cn":"气温将上升。(句子)","fr":"La température va monter.","gender":"none"},
-{"id":3751,"cn":"天气会变热。(句子)","fr":"Il va faire plus chaud.","gender":"none"},
-{"id":3752,"cn":"天气会变冷。(句子)","fr":"Il va faire plus froid.","gender":"none"},
-{"id":3753,"cn":"气温将下降。(句子)","fr":"La température va baisser.","gender":"none"}
+{"id":3750,"cn":"气温将上升。(句子)","fr":"La température va monter","gender":"none"},
+{"id":3751,"cn":"天气会变热。(句子)","fr":"Il va faire plus chaud","gender":"none"},
+{"id":3752,"cn":"天气会变冷。(句子)","fr":"Il va faire plus froid","gender":"none"},
+{"id":3753,"cn":"气温将下降。(句子)","fr":"La température va baisser","gender":"none"}
 ]
