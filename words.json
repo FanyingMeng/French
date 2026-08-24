@@ -1790,7 +1790,7 @@
 {"id":1789,"cn":"聚集在一起做…","fr":"se réunir pour faire","gender":"none"},
 {"id":1790,"cn":"收拾行李 / 整理物品","fr":"réunir ses affaires","gender":"none"},
 {"id":1791,"cn":"团聚家庭","fr":"réunir la famille","gender":"none"},
-{"id":1792,"cn":"聚集/吸引大批观众","fr":"réunir un large public","gender":"none"},
+{"id":1792,"cn":"聚集/吸引一大批观众","fr":"réunir un large public","gender":"none"},
 {"id":1793,"cn":"拒绝做…","fr":"refuser de faire","gender":"none"},
 {"id":1794,"cn":"拒绝给某人qn某物qch","fr":"refuser qch à qn","gender":"none"},
 {"id":1795,"cn":"亲吻脸颊","fr":"embrasser sur la joue","gender":"none"},
@@ -3750,5 +3750,8 @@
 {"id":3749,"cn":"零下2度 / 负2度","fr":"Moins 2 degrés","gender":"none"},
 {"id":3750,"cn":"气温将上升。(句子)","fr":"La température va monter","gender":"none"},
 {"id":3751,"cn":"天气会变热。(句子)","fr":"Il va faire plus chaud","gender":"none"},
-{"id":3752,"cn":"天气会变冷。(句子)","fr":"Il va faire plus froid","gender":"none"}
+{"id":3752,"cn":"天气会变冷。(句子)","fr":"Il va faire plus froid","gender":"none"},
+{"id":3753,"cn":"一个工作伙伴(n.阴阳同形) / 业务合作伙伴","fr":"un partenaire de travail","gender":"m"},
+{"id":3754,"cn":"成为qn.的合伙人/伙伴","fr":"devenir partenaire de qn","gender":"none"},
+{"id":3755,"cn":"与一个合作伙伴协作/合作","fr":"collaborer avec un partenaire","gender":"none"}
 ]
