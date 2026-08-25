@@ -1787,5 +1787,21 @@
 {"id":1786,"cn":"我们加入/联系(j)","fr":"nous joignons","gender":"none"},
 {"id":1787,"cn":"你们加入/联系(j)","fr":"vous joignez","gender":"none"},
 {"id":1788,"cn":"他们加入/联系(j)","fr":"ils joignent","gender":"none"},
-{"id":1789,"cn":"她们加入/联系(j)","fr":"elles joignent","gender":"none"}
+{"id":1789,"cn":"她们加入/联系(j)","fr":"elles joignent","gender":"none"},
+{"id":1790,"cn":"我沉默","fr":"je me tais","gender":"none"},
+{"id":1791,"cn":"你沉默","fr":"tu te tais","gender":"none"},
+{"id":1792,"cn":"他沉默","fr":"il se tait","gender":"none"},
+{"id":1793,"cn":"她沉默","fr":"elle se tait","gender":"none"},
+{"id":1794,"cn":"我们沉默","fr":"nous nous taisons","gender":"none"},
+{"id":1795,"cn":"你们沉默","fr":"vous vous taisez","gender":"none"},
+{"id":1796,"cn":"他们沉默","fr":"ils se taisent","gender":"none"},
+{"id":1797,"cn":"她们沉默","fr":"elles se taisent","gender":"none"},
+{"id":1798,"cn":"我隐瞒","fr":"je tais","gender":"none"},
+{"id":1799,"cn":"你隐瞒","fr":"tu tais","gender":"none"},
+{"id":1800,"cn":"他隐瞒","fr":"il tait","gender":"none"},
+{"id":1801,"cn":"她隐瞒","fr":"elle tait","gender":"none"},
+{"id":1802,"cn":"我们隐瞒","fr":"nous taisons","gender":"none"},
+{"id":1803,"cn":"你们隐瞒","fr":"vous taisez","gender":"none"},
+{"id":1804,"cn":"他们隐瞒","fr":"ils taisent","gender":"none"},
+{"id":1805,"cn":"她们隐瞒","fr":"elles taisent","gender":"none"}
 ]
