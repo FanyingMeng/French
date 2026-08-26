@@ -3324,7 +3324,7 @@
 {"id":3323,"cn":"一个巨大的惊喜","fr":"une grosse surprise","gender":"none"},
 {"id":3324,"cn":"一个胖男人","fr":"un gros homme","gender":"m"},
 {"id":3325,"cn":"一大笔钱","fr":"une grosse somme d'argent","gender":"none"},
-{"id":3326,"cn":"在研讨会上，在研讨班","fr":"à un séminaire","gender":"none"},
+{"id":3326,"cn":"在一个研讨会上，在研讨班","fr":"à un séminaire","gender":"none"},
 {"id":3327,"cn":"用支票付款","fr":"payer par chèque","gender":"none"},
 {"id":3328,"cn":"一个礼品券，礼品卡","fr":"un chèque-cadeau","gender":"none"},
 {"id":3329,"cn":"不久，即将(p)adv.","fr":"prochainement","gender":"none"},
@@ -3370,7 +3370,7 @@
 {"id":3369,"cn":"收腹","fr":"rentrer le ventre","gender":"none"},
 {"id":3370,"cn":"脚踝","fr":"cheville","gender":"f"},
 {"id":3371,"cn":"翘二郎腿，交叉双腿","fr":"croiser les jambes","gender":"none"},
-{"id":3372,"cn":"膝盖","fr":"genou","gender":"m"},
+{"id":3372,"cn":"膝盖","fr":"le genou","gender":"m"},
 {"id":3373,"cn":"偶遇qn，与某人擦肩而过","fr":"croiser qn","gender":"none"},
 {"id":3374,"cn":"祈祷，祝好运","fr":"croiser les doigts","gender":"none"},
 {"id":3375,"cn":"保持双腿好好伸直","fr":"garder les jambes bien droites","gender":"none"},
@@ -3757,5 +3757,9 @@
 {"id":3756,"cn":"不请自来参加一个聚会 / 擅自去参加派对","fr":"s'inviter à une fête","gender":"none"},
 {"id":3757,"cn":"毕竟 / 终究 / 到底","fr":"Après tout","gender":"none"},
 {"id":3758,"cn":"其实 / 说到底 / 本质上 / 在底部","fr":"Au fond","gender":"none"},
-{"id":3759,"cn":"一瓶香水 / 香水小瓶","fr":"un flacon de parfum","gender":"m"}
+{"id":3759,"cn":"一瓶香水 / 香水小瓶","fr":"un flacon de parfum","gender":"m"},
+{"id":3760,"cn":"跳蚤 / 芯片（微芯片）/ 亲爱的","fr":"La puce","gender":"f"},
+{"id":3761,"cn":"红发 / 红棕色头发","fr":"les cheveux roux","gender":"m"},
+{"id":3762,"cn":"一些红褐色的树叶 / 红叶","fr":"des feuilles rousses","gender":"f"},
+{"id":3763,"cn":"夜班 / 夜间工作","fr":"Le travail de nuit","gender":"m"}
 ]
