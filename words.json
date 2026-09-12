@@ -3922,5 +3922,15 @@
 {"id":3921,"cn":"信奉一个宗教","fr":"pratiquer une religion","gender":"none"},
 {"id":3922,"cn":"严格（adv）遵照指示","fr":"suivre religieusement les instructions","gender":"none"},
 {"id":3923,"cn":"象征一个新的开始","fr":"symboliser un nouveau départ","gender":"none"},
-{"id":3924,"cn":"旗帜，国旗","fr":"le drapeau","gender":"m"}
+{"id":3924,"cn":"旗帜，国旗","fr":"le drapeau","gender":"m"},
+{"id":3925,"cn":"是在罢工","fr":"être en grève","gender":"none"},
+{"id":3926,"cn":"举行罢工","fr":"faire la grève","gender":"none"},
+{"id":3927,"cn":"谁在吃（从句缺主语，句子）？","fr":"Qui est-ce qui mange","gender":"none"},
+{"id":3928,"cn":"你在等谁（从句缺主语，句子）？","fr":"Qui est-ce que tu attends","gender":"none"},
+{"id":3929,"cn":"银行卡","fr":"la carte bancaire","gender":"none"},
+{"id":3930,"cn":"尝试去总行 / 中央营业部(vous的命令式)","fr":"essayez d'aller à l'agence centrale","gender":"none"},
+{"id":3931,"cn":"新年庆祝活动 / 新年节日（复数）","fr":"les fêtes du nouvel an","gender":"f"},
+{"id":3932,"cn":"能够没有","fr":"pouvoir se passer de","gender":"none"},
+{"id":3933,"cn":"这几乎是不可能的（句子）","fr":"C'est presque impossible","gender":"none"},
+{"id":3934,"cn":"忘记密码","fr":"oublier le code","gender":"none"}
 ]
