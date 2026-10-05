@@ -303,12 +303,55 @@ function clearCurrentSession() {
     localStorage.removeItem('fr_session_' + currentMode);
 }
 
+// ─── Fix 9: 今日题库固化（跨 session 持久化）──────────────────
+//
+//  buildTodayQueueSRS 是用"当前"SRS 状态现算的：背过的词已经写进 SRS、
+//  进了"今日已过关"名单，会被候选池排除，于是中途关掉页面再打开时，
+//  重新算出来的新词范围（顶部"进度：xxx"）和复习词集合都会往后漂。
+//  解决：当天第一次生成题库时，把完整的词序和新词/复习词 id 存下来
+//  （fr_plan_<mode>），之后同一天、同一个每日数量下重开页面一律直接
+//  读取，不再重算。按日期自动失效；改每日数量时才会重新生成。
+
+function loadTodayPlan(mode, limit) {
+    const raw = localStorage.getItem('fr_plan_' + mode);
+    if (!raw) return null;
+    try {
+        const plan = JSON.parse(raw);
+        if (plan && plan.dateSeed === todayDateSeed() && plan.limit === limit &&
+            Array.isArray(plan.ids) && plan.progress) {
+            return plan;
+        }
+    } catch (e) {
+        // 解析失败按没有处理
+    }
+    return null;
+}
+
+function saveTodayPlan(mode, limit, words) {
+    localStorage.setItem('fr_plan_' + mode, JSON.stringify({
+        dateSeed: todayDateSeed(),
+        limit:    limit,
+        ids:      words.map(w => w.id),
+        progress: todayProgressInfo
+    }));
+}
+
 // ─── 队列构建（含历史恢复）────────────────────────────────────
 function buildQueue(limit) {
     const today    = new Date();
     const dateSeed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
 
-    const fullTodayQueue = buildTodayQueueSRS(currentData, currentMode, limit);
+    // Fix 9: 优先复用当天已固化的题库；没有（新的一天 / 改了每日数量）才重新计算
+    let fullTodayQueue;
+    const plan = loadTodayPlan(currentMode, limit);
+    if (plan) {
+        const byId = new Map(currentData.map(w => [w.id, w]));
+        fullTodayQueue    = plan.ids.map(id => byId.get(id)).filter(Boolean);
+        todayProgressInfo = plan.progress;
+    } else {
+        fullTodayQueue = buildTodayQueueSRS(currentData, currentMode, limit);
+        saveTodayPlan(currentMode, limit, fullTodayQueue);
+    }
     mainPool = new Set(fullTodayQueue.map(w => w.id));
 
     const savedSession = localStorage.getItem('fr_session_' + currentMode);
@@ -342,10 +385,12 @@ function buildQueue(limit) {
     }
 
     if (!hasRestored) {
-        queue              = fullTodayQueue;
+        // Fix 9: 题库是复用的时候，今天已经过关的词不能再重复出现
+        const doneToday    = new Set(loadAnsweredToday(currentMode).ids);
+        queue              = fullTodayQueue.filter(w => !doneToday.has(w.id));
         wrongBuffer        = [];
         recentWords        = [];
-        answeredIds        = new Set();
+        answeredIds        = new Set(fullTodayQueue.filter(w => doneToday.has(w.id)).map(w => w.id));
         forceCorrectWordId = null;
         mainAnsweredCount  = 0;
         clearCurrentSession();
