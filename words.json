@@ -767,7 +767,7 @@
 {"id":766,"cn":"好处，利处，优点","fr":"l'avantage","gender":"m"},
 {"id":767,"cn":"绿地","fr":"l'espace vert","gender":"m"},
 {"id":768,"cn":"疲倦的","fr":"fatiguée","gender":"f"},
-{"id":769,"cn":"弊端，不便之处","fr":"inconvénient","gender":"m"},
+{"id":769,"cn":"做...有弊端，不便之处","fr":"Il y a quelques inconvénients à faire","gender":"m"},
 {"id":770,"cn":"打开的；开放的","fr":"ouverte","gender":"f"},
 {"id":771,"cn":"因为","fr":"parce que","gender":"none"},
 {"id":772,"cn":"有理，正确","fr":"avoir raison","gender":"none"},
@@ -4051,6 +4051,13 @@
 {"id":4050,"cn":"录入一些数据","fr":"saisir des données","gender":"none"},
 {"id":4051,"cn":"领会这个决定的重要性","fr":"saisir l'importance de cette décision","gender":"none"},
 {"id":4052,"cn":"勇敢面对困难","fr":"affronter courageusement les difficultés","gender":"none"},
-{"id":4053,"cn":"加油 / 祝你好运","fr":"Bon courage","gender":"none"}
-
+{"id":4053,"cn":"加油 / 祝你好运","fr":"Bon courage","gender":"none"},
+{"id":4054,"cn":"需要权衡利弊","fr":"Il faut peser le pour et le contre","gender":"none"},
+{"id":4055,"cn":"采取行动","fr":"Passer à l'action","gender":"none"},
+{"id":4056,"cn":"光说是不够的","fr":"il ne suffit pas de parler","gender":"none"},
+{"id":4057,"cn":"采取一些具体措施","fr":"prendre des mesures concrètes","gender":"none"},
+{"id":4058,"cn":"对自己的行为们负责","fr":"être responsable de ses actes","gender":"none"},
+{"id":4059,"cn":"在自己的层面 / 力所能及的范围内","fr":"à son niveau","gender":"none"},
+{"id":4060,"cn":"即使是小规模 / 即使从微小做起","fr":"même à petite échelle","gender":"none"},
+{"id":4061,"cn":"为环保采取行动","fr":"agir en faveur de l'environnement","gender":"none"}
 ]
