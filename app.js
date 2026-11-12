@@ -701,6 +701,7 @@ function handleWrong(correct, accentOnly) {
 // ─── 计数 ──────────────────────────────────────────────────────
 function updateCount() {
     dom.count.innerText = Math.max(0, mainPool.size - answeredIds.size);
+    renderProgressHeader(); // "已学 X / Y" 跟着每次答题实时刷新
 }
 
 // ─── 每日新词数（兼容旧设置）──────────────────────────────────
