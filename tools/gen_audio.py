@@ -34,11 +34,23 @@ OVERRIDES_FILE = os.path.join(ROOT, 'tools', 'tts_overrides.json')
 OVERRIDES_LOCK = os.path.join(AUDIO_DIR, 'overrides.lock.json')
 
 
+def sentence_form(text):
+    """je vais -> Je vais.  短片段写成完整句子，语音不容易误判成英语"""
+    text = normalize_for_audio(text)
+    if not text:
+        return text
+    text = text[0].upper() + text[1:]
+    return text if text[-1] in '.!?' else text + '.'
+
+
 def load_overrides():
-    if not os.path.exists(OVERRIDES_FILE):
-        return {}
-    with open(OVERRIDES_FILE, encoding='utf-8') as f:
-        return {audio_key(k): normalize_for_audio(v) for k, v in json.load(f).items()}
+    # 1) 动词表全部按句子形式朗读（"nous devons" 这类短片段常被读成英语）
+    out = {k: sentence_form(t) for k, (t, kind) in collect(None).items() if kind == 'verb'}
+    # 2) 手动修正表优先
+    if os.path.exists(OVERRIDES_FILE):
+        with open(OVERRIDES_FILE, encoding='utf-8') as f:
+            out.update({audio_key(k): normalize_for_audio(v) for k, v in json.load(f).items()})
+    return out
 
 
 def normalize_for_audio(text):
