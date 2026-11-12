@@ -1,7 +1,6 @@
 # 自动生成发音 mp3（免费：公开仓库的 GitHub Actions 不收费，edge-tts 不需要账号）
 # - 改了 words/verbs/sentences.json 推送后自动运行，只生成新增的
-# - 每天再跑一次，把上次因时间限制没生成完的补上
-# - 也可以在 GitHub 网页的 Actions 页面手动点 "Run workflow"
+# - 也可以在 GitHub 网页的 Actions 页面手动点 "Run workflow"（换声音、失败重跑时用）
 name: Generate audio
 
 on:
@@ -13,8 +12,6 @@ on:
       - sentences.json
       - tools/gen_audio.py
       - .github/workflows/tts.yml
-  schedule:
-    - cron: '17 7 * * *'
   workflow_dispatch:
 
 permissions:
@@ -39,7 +36,7 @@ jobs:
         run: pip install edge-tts
 
       - name: Generate missing audio
-        # 句子优先生成；每次最多跑 40 分钟，剩下的交给下一次
+        # 句子优先生成；每次最多跑 40 分钟，没生成完的再手动跑一次即可
         run: |
           python tools/gen_audio.py --only sentence
           python tools/gen_audio.py --time-limit 2400

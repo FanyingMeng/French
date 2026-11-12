@@ -39,8 +39,8 @@
 优先播放 `audio/` 里预生成的 mp3（加拿大法语神经语音 fr-CA-Sylvie），没有的才用词典音频或系统语音。
 
 mp3 由 GitHub Actions 自动生成（`.github/workflows/tts.yml`），**免费、不需要任何账号**：
-推送改动过的 JSON 后会自动补上新句子的音频；每天还会再跑一次补漏。
-也可以在 GitHub 的 Actions 页面手动运行 "Generate audio"。
+推送改动过的 JSON 后会自动补上新句子的音频。
+换声音或某次生成失败时，可以在 GitHub 的 Actions 页面手动运行 "Generate audio"。
 
 想换声音或在自己电脑上生成：
 
