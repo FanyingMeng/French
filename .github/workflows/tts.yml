@@ -11,6 +11,7 @@ on:
       - verbs.json
       - sentences.json
       - tools/gen_audio.py
+      - tools/tts_overrides.json
       - .github/workflows/tts.yml
   workflow_dispatch:
     inputs:

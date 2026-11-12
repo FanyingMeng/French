@@ -28,6 +28,17 @@ import unicodedata
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 AUDIO_DIR = os.path.join(ROOT, 'audio')
 SOURCES = {'word': 'words.json', 'verb': 'verbs.json', 'sentence': 'sentences.json'}
+# 发音修正表：{"页面上显示的法语": "实际让语音朗读的文字"}。
+# 某条读错时在这里加一行，推送后只会重新生成这几条。
+OVERRIDES_FILE = os.path.join(ROOT, 'tools', 'tts_overrides.json')
+OVERRIDES_LOCK = os.path.join(AUDIO_DIR, 'overrides.lock.json')
+
+
+def load_overrides():
+    if not os.path.exists(OVERRIDES_FILE):
+        return {}
+    with open(OVERRIDES_FILE, encoding='utf-8') as f:
+        return {audio_key(k): normalize_for_audio(v) for k, v in json.load(f).items()}
 
 
 def normalize_for_audio(text):
@@ -97,8 +108,16 @@ async def main():
 
     os.makedirs(AUDIO_DIR, exist_ok=True)
     jobs = collect(args.only)
+    overrides = load_overrides()
+    lock = {}
+    if os.path.exists(OVERRIDES_LOCK):
+        with open(OVERRIDES_LOCK, encoding='utf-8') as f:
+            lock = json.load(f)
+    # 修正表里新增/改动的条目要重新生成；被删掉的修正也要按原文重新生成
+    changed = {k for k in set(overrides) | set(lock) if overrides.get(k) != lock.get(k)}
+    jobs = {k: (overrides.get(k, t), kind) for k, (t, kind) in jobs.items()}
     todo = [(k, t, kind) for k, (t, kind) in jobs.items()
-            if args.force or not (os.path.exists(os.path.join(AUDIO_DIR, k + '.mp3'))
+            if args.force or k in changed or not (os.path.exists(os.path.join(AUDIO_DIR, k + '.mp3'))
                     and os.path.getsize(os.path.join(AUDIO_DIR, k + '.mp3')) > 0)]
     print(f'共 {len(jobs)} 条文本，需要生成 {len(todo)} 条，声音 {args.voice}', flush=True)
 
@@ -134,6 +153,11 @@ async def main():
             stats['fail'] += 1
 
     await asyncio.gather(*(one(k, t, kind) for k, t, kind in todo))
+    # 记录已经按修正表生成的条目（只记成功生成的）
+    done_lock = {k: v for k, v in overrides.items()
+                 if k not in jobs or k not in changed or os.path.exists(os.path.join(AUDIO_DIR, k + '.mp3'))}
+    with open(OVERRIDES_LOCK, 'w', encoding='utf-8') as f:
+        json.dump(done_lock, f, ensure_ascii=False, indent=1, sort_keys=True)
     total = write_index()
     print(f'完成：新生成 {stats["ok"]}，失败 {stats["fail"]}，因时间限制留到下次 {stats["skipped"]}；'
           f'audio/ 里现在共有 {total} 个 mp3', flush=True)
