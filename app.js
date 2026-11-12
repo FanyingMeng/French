@@ -4,38 +4,32 @@
 //  模式说明：
 //   'word'     普通单词：显示中文 → 输入法语拼写
 //   'verb'     动词变位：显示中文 → 输入法语拼写
-//   'sentence' 背诵句子：显示中文 → 按 Enter 揭示答案 → 自评记住/没记住
+//   'sentence' 背诵句子（TCF 口语）：显示中文 → Enter 揭示答案 → 自评
 //
 //  Bug 修复清单（相比原始版本）：
-//   Fix 1. forceCorrect 订正成功后 mainAnsweredCount++ （原本永不增加，
-//          导致新词被错词无限挤出，几乎出不来）
+//   Fix 1. forceCorrect 订正成功后 mainAnsweredCount++
 //   Fix 2. killBtn 的 disabled 同帧解锁无防护；改为立即 display:none
 //   Fix 3. fallbackTTS getVoices() 首次为空，改用 onvoiceschanged 事件
 //   Fix 4. recentWords.push 时机错误，移到 pickNextWord 之前
-//   Fix 5. 原"每日选词"用哈希算随机窗口，词库长度一变（天天加词）就会
-//          稀释新词，导致新加的词永远抽不到；且复习节奏只按"哪天发的"
-//          批次去猜，跟实际记没记住无关。改为按每个词单独记账的真间隔
-//          重复（SRS）：新词按 id 升序（=添加顺序）依次学，不看词库
-//          大小；复习到期日跟着你的真实答题表现走——一遍就过按等级表
-//          往后推，答错需订正 2 次才过关的词则回到最短间隔（明天必见）。
-//   Fix 6. 句子模式发音原本也去查在线词典的单词音频库，但词典没有完整
-//          句子的录音，导致经常无声却不触发本地语音兜底。改为句子模式
-//          直接使用本地 Mac 系统语音（Web Speech API），并优先选取
-//          localService 的本地法语人声（Thomas/Amelie 等），音质更好。
-//   Fix 7. 词库全部学完一轮后（不再有"从没学过"的词），自动清空该模式
-//          的 SRS 记录，从 id 1 重新开始完整学一遍，循环往复，避免停
-//          留在"全部变成超长间隔复习、每天凑不满数量"的状态。
-//   Fix 8. buildTodayQueueSRS 每次都是"实时"用当前 SRS 状态现算今天的
-//          题库；一个词今天刚答对时，它的新 dueDate（如"明天"）是所有
-//          已学词里最近的，导致题量不够时的"兜底填坑"逻辑会把它自己
-//          捞回来。平时靠 session 里的 queueIds 挡住不会真的显示出来，
-//          但只要 session 被清空（比如改每日数量设置时的
-//          clearCurrentSession()），题库会直接用重新算出来的、被污染
-//          的 fullTodayQueue，已经答对的词就会重新出现。改为额外维护
-//          一份跨 session 持久化的"今天已过关词"名单（fr_answered_today_
-//          <mode>），从候选池（到期复习/新词/兜底填坑）里硬性排除，
-//          不受 session 清没清、设置改没改、页面刷不刷新影响；名单按
-//          日期自动失效，不需要额外清理逻辑。
+//   Fix 5. 改为按每个词单独记账的真间隔重复（SRS），新词按 id 升序依次学
+//   Fix 6. 句子模式发音直接使用本地语音（现已被 Fix 13 的 mp3 取代，作兜底）
+//   Fix 8. 维护跨 session 持久化的"今天已过关词"名单，候选池硬性排除
+//   Fix 9. 当天第一次生成的题库固化下来，同一天重开页面直接复用
+//
+//  2026-11 按扇贝逻辑重构：
+//   Fix 10. 删除原 Fix 7（词库学完一轮就清空全部 SRS 记录）。它会把已经
+//           推到 90/180 天间隔的熟词全部打回原形。现在学完新词后每天就
+//           只剩到期复习，量自然变少——这正是间隔重复的目的。
+//   Fix 11. 设置项改为"每日新词数"；到期复习词全部出现，不再封顶
+//           （原来固定 50 新 + 50 复习，复习词一多就越积越多）。删除用
+//           "还没到期的词"填坑的逻辑（会打乱间隔）。
+//   Fix 12. 答错不再一律退回 level 0：降两级、明天再见（扇贝/Anki 做法）。
+//   Fix 13. 发音优先播放 audio/ 下预生成的 mp3（edge-tts 神经语音，免费），
+//           没有的才退回词典音频 / 系统语音。
+//   Fix 14. 输入容错：统一弯/直撇号、多余空格、末尾标点；只错重音时单独提示。
+//   Fix 15. 句子改为一句一卡，按 ouitcf 的话题分组；新句按话题顺序出，
+//           卡片上显示所属话题。
+//   Fix 16. 设置里加"导出/导入进度"，进度不再只能活在一个浏览器里。
 // ═══════════════════════════════════════════════════════════════
 
 let currentData = [];
@@ -55,9 +49,9 @@ let sentenceRevealed = false;
 
 let nextTimer = null;
 
-let todayProgressInfo = null; // { newIds: [...], reviewIds: [...] }，用于页面顶部进度展示
+let todayProgressInfo = null; // { newIds: [...], reviewIds: [...] }
 
-const LIMIT_DEFAULT       = 100;
+const NEW_DEFAULT         = { word: 30, verb: 30, sentence: 15 };
 const NEXT_DELAY          = 1200;
 const NEW_WORD_INTERVAL   = 3;
 const WRONG_BACKLOG_LIMIT = 2;
@@ -72,22 +66,97 @@ const dom = {
     limitInp:           document.getElementById('limit-input'),
     finishArea:         document.getElementById('finish-area'),
     modeOverlay:        document.getElementById('mode-overlay'),
-    // 句子模式专用
     sentenceRevealArea: document.getElementById('sentence-reveal-area'),
     sentenceHint:       document.getElementById('sentence-hint'),
     sentenceAnswer:     document.getElementById('sentence-answer'),
     sentenceJudgeRow:   document.getElementById('sentence-judge-row'),
     progressInfo:       document.getElementById('progress-info'),
+    importFile:         document.getElementById('import-file'),
 };
 
-// ─── 是否句子模式 ──────────────────────────────────────────────
 function isSentenceMode() {
     return currentMode === 'sentence';
+}
+
+// ─── Fix 14: 输入比较 ──────────────────────────────────────────
+function normalizeAnswer(s) {
+    return (s || '')
+        .normalize('NFC')
+        .toLowerCase()
+        .replace(/[’‘`´ʼ]/g, "'")
+        .replace(/\s*'\s*/g, "'")
+        .replace(/[.!?。！？]+$/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function stripAccents(s) {
+    return s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/œ/g, 'oe').replace(/æ/g, 'ae');
+}
+
+// 返回 'ok' | 'accent'（只有重音不对）| 'wrong'
+function compareAnswer(input, correct) {
+    const a = normalizeAnswer(input);
+    const b = normalizeAnswer(correct);
+    if (a === b) return 'ok';
+    if (stripAccents(a) === stripAccents(b)) return 'accent';
+    return 'wrong';
+}
+
+// ─── Fix 13: 预生成 mp3 ────────────────────────────────────────
+//  文件名 = 法语文本的 FNV-1a 32 位哈希（tools/gen_audio.py 用同一算法），
+//  所以文本一改就会自动生成新音频，同样的文本只存一份。
+let audioIndex = new Set();
+
+function normalizeForAudio(text) {
+    return (text || '').normalize('NFC').replace(/’/g, "'").replace(/\s+/g, ' ').trim();
+}
+
+function audioKey(text) {
+    const bytes = new TextEncoder().encode(normalizeForAudio(text));
+    let h = 0x811c9dc5;
+    for (let i = 0; i < bytes.length; i++) {
+        h ^= bytes[i];
+        h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return h.toString(16).padStart(8, '0');
+}
+
+async function loadAudioIndex() {
+    try {
+        const res = await fetch('audio/index.json', { cache: 'no-cache' });
+        if (!res.ok) return;
+        const list = await res.json();
+        if (Array.isArray(list)) audioIndex = new Set(list);
+    } catch (e) {
+        // 还没生成音频时这里会失败，直接用兜底发音
+    }
+}
+
+function playMp3(text) {
+    const key = audioKey(text);
+    if (!audioIndex.has(key)) return false;
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    if (window.currentAudio) window.currentAudio.pause();
+    window.currentAudio = new Audio('audio/' + key + '.mp3');
+    window.currentAudio.play().catch(function() {
+        // 自动播放被拦截或文件缺失时，退回系统语音
+        fallbackTTS(text);
+    });
+    return true;
 }
 
 // ─── 发音 ──────────────────────────────────────────────────────
 async function speak(text) {
     if (!text) return;
+    if (playMp3(text)) return;
+
+    if (isSentenceMode()) {
+        // 词典没有整句录音，句子直接用本地语音
+        fallbackTTS(text);
+        return;
+    }
+
     const url = 'https://www.wordreference.com/audio/fr/fr/v1/' +
         encodeURIComponent(text.trim().toLowerCase()) + '.mp3';
     if (window.currentAudio) window.currentAudio.pause();
@@ -106,8 +175,7 @@ async function speak(text) {
 //
 //  每个词的状态存在 localStorage（key: fr_srs_<mode>），格式：
 //    { "<wordId>": { level: 0~8, dueDate: 20260710 } }
-//  只要一个词的 id 不在这张表里，就是"还没学过的新词"——天然支持
-//  词库无限扩容，不用管顺序、不用管游标，也不会被词库长度稀释。
+//  不在表里的 id 就是"还没学过的新词"。
 
 const SRS_INTERVALS = [1, 2, 4, 7, 15, 30, 60, 90, 180]; // 单位：天
 
@@ -161,22 +229,16 @@ function srsAdvance(mode, wordId) {
     saveSRS(mode, srs);
 }
 
-// 答错、订正 2 次后才过关：印象不牢，退回最短间隔，明天必然再见
-function srsReset(mode, wordId) {
-    const srs = loadSRS(mode);
-    srs[wordId] = { level: 0, dueDate: addDaysToSeed(todayDateSeed(), SRS_INTERVALS[0]) };
+// Fix 12: 答错、订正后才过关：降两级，明天必然再见
+function srsLapse(mode, wordId) {
+    const srs   = loadSRS(mode);
+    const cur   = srs[wordId];
+    const level = cur ? Math.max(0, (cur.level || 0) - 2) : 0;
+    srs[wordId] = { level: level, dueDate: addDaysToSeed(todayDateSeed(), 1) };
     saveSRS(mode, srs);
 }
 
 // ─── Fix 8: 今日已过关词名单（跨 session 持久化）──────────────
-//
-//  只要一个词今天已经被答对过（首次直接答对，或错题订正 2 次过关），
-//  就写进这份名单。它独立于 buildQueue/session 的生命周期——不会因为
-//  clearCurrentSession()（比如改每日数量设置）而被清掉。
-//  buildTodayQueueSRS 在选新词/复习词/兜底填坑词时都会排除这份名单里
-//  的词，从根上防止"今天刚答对的词又被算回题库里"。
-//  名单按 dateSeed 存储，跨天读取时自动失效，不需要额外清理逻辑。
-
 function loadAnsweredToday(mode) {
     const raw = localStorage.getItem('fr_answered_today_' + mode);
     if (raw) {
@@ -200,97 +262,64 @@ function markAnsweredToday(mode, wordId) {
     }
 }
 
-function buildTodayQueueSRS(allWords, mode, limit) {
-    limit = limit || 100;
+// Fix 10/11: 新词 = 每日新词数；复习 = 所有到期词（不封顶、不提前借）
+function buildTodayQueueSRS(allWords, mode, newLimit) {
     if (!allWords || allWords.length === 0) {
         todayProgressInfo = null;
         return [];
     }
 
-    const newWordCount = Math.floor(limit * 0.5);
-    const reviewCount  = limit - newWordCount;
-    const dateSeed     = todayDateSeed();
-    let   srs          = loadSRS(mode);
-
-    // Fix 8: 今天已经答对过关的词，任何候选池都不能再选中它
+    const dateSeed      = todayDateSeed();
+    const srs           = loadSRS(mode);
     const answeredToday = new Set(loadAnsweredToday(mode).ids);
 
-    // Fix 7: 词库里已经没有"从没学过"的词了，说明已经完整走完一轮——
-    //        清空这个模式的 SRS 记录，从 id 1 开始重新完整学一遍，
-    //        循环往复，不会停在"全部变成超长间隔复习"的状态。
-    const hasUnlearned = allWords.some(w => !srs[w.id]);
-    if (!hasUnlearned) {
-        srs = {};
-        saveSRS(mode, srs);
-    }
-
-    // ① 到期复习词：已学过、且到期日 <= 今天，越早到期越优先出现
-    //    （排除今天已经过关的词，见 Fix 8）
-    const dueWords = allWords
+    // ① 到期复习词：越早到期越优先
+    const reviewSelected = allWords
         .filter(w => srs[w.id] && srs[w.id].dueDate <= dateSeed && !answeredToday.has(w.id))
         .sort((a, b) => srs[a.id].dueDate - srs[b.id].dueDate);
 
-    const reviewSelected     = dueWords.slice(0, reviewCount);
-    const leftoverReviewSlot = reviewCount - reviewSelected.length;
-
-    // ② 新词：还没有 SRS 记录的词，按 id 升序（=添加进词库的顺序）依次取
-    //    到期复习词不够时，多出来的名额用来多学一些新词
-    //    （排除今天已经过关的词，见 Fix 8——理论上不会有交集，加上更保险）
-    const unlearned = allWords
+    // ② 新词：按 id 升序（=添加进词库的顺序 / 句子的话题顺序）
+    const newSelected = allWords
         .filter(w => !srs[w.id] && !answeredToday.has(w.id))
-        .sort((a, b) => a.id - b.id);
+        .sort((a, b) => a.id - b.id)
+        .slice(0, newLimit);
 
-    const newSelected = unlearned.slice(0, newWordCount + Math.max(0, leftoverReviewSlot));
-
-    let reviewFinal = [...reviewSelected];
-    let combined    = [...newSelected, ...reviewSelected];
-
-    // ③ 兜底：新词也不够、到期复习词也不够（比如刚好在轮回交界处）时，
-    //    用还没到期但最快到期的词补满，保证每天都有内容可学
-    //    （这部分本质也是"提前借来的复习词"，记进 reviewFinal 一起统计）
-    //    Fix 8: 这里最容易把"今天刚答对、dueDate 最近"的词错误地捞
-    //    回来，必须排除 answeredToday。
-    if (combined.length < limit) {
-        const usedIds   = new Set(combined.map(w => w.id));
-        const notDueYet = allWords
-            .filter(w => srs[w.id] && !usedIds.has(w.id) && !answeredToday.has(w.id))
-            .sort((a, b) => srs[a.id].dueDate - srs[b.id].dueDate);
-        const extra = notDueYet.slice(0, limit - combined.length);
-        reviewFinal = reviewFinal.concat(extra);
-        combined    = combined.concat(extra);
-    }
-
-    // 记录今天的新词 id 列表 / 复习词 id 列表，供页面顶部进度展示使用
     todayProgressInfo = {
         newIds:    newSelected.map(w => w.id),
-        reviewIds: reviewFinal.map(w => w.id)
+        reviewIds: reviewSelected.map(w => w.id)
     };
 
-    // ④ 当天出场顺序打乱（确定性伪随机，保证同一天多次打开顺序一致）
-    combined.sort((a, b) =>
-        pseudoRandom(dateSeed + a.id + 999) - pseudoRandom(dateSeed + b.id + 999)
-    );
+    const shuffle = function(list) {
+        return list.slice().sort((a, b) =>
+            pseudoRandom(dateSeed + a.id + 999) - pseudoRandom(dateSeed + b.id + 999));
+    };
 
-    return combined;
+    // ③ 出场顺序：句子模式复习打乱、新句保持话题顺序（同一话题连着学）；
+    //    单词/动词全部打乱（确定性伪随机，同一天多次打开顺序一致）
+    if (mode === 'sentence') {
+        return shuffle(reviewSelected).concat(newSelected);
+    }
+    return shuffle(reviewSelected.concat(newSelected));
 }
 
 function renderProgressHeader() {
     if (!dom.progressInfo) return;
-    if (!todayProgressInfo || !todayProgressInfo.newIds || todayProgressInfo.newIds.length === 0) {
+    if (!todayProgressInfo) {
         dom.progressInfo.textContent = '';
         return;
     }
-    const maxId = Math.max(...todayProgressInfo.newIds);
-    dom.progressInfo.textContent = '进度：' + maxId;
+    const n = todayProgressInfo.newIds.length;
+    const r = todayProgressInfo.reviewIds.length;
+    const srs     = loadSRS(currentMode);
+    const learned = currentData.filter(w => srs[w.id]).length;
+    dom.progressInfo.textContent =
+        '今日新学 ' + n + ' · 复习 ' + r + ' · 已学 ' + learned + ' / ' + currentData.length;
 }
 
 // ─── 今日进度持久化 ────────────────────────────────────────────
 function saveCurrentSession() {
-    const today    = new Date();
-    const dateSeed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
-
     const sessionSnapshot = {
-        dateSeed,
+        dateSeed:         todayDateSeed(),
         queueIds:         queue.map(w => w.id),
         wrongBufferState: wrongBuffer.map(w => ({ id: w.id, streak: w.streak || 0 })),
         mainAnsweredCount,
@@ -303,23 +332,18 @@ function clearCurrentSession() {
     localStorage.removeItem('fr_session_' + currentMode);
 }
 
-// ─── Fix 9: 今日题库固化（跨 session 持久化）──────────────────
-//
-//  buildTodayQueueSRS 是用"当前"SRS 状态现算的：背过的词已经写进 SRS、
-//  进了"今日已过关"名单，会被候选池排除，于是中途关掉页面再打开时，
-//  重新算出来的新词范围（顶部"进度：xxx"）和复习词集合都会往后漂。
-//  解决：当天第一次生成题库时，把完整的词序和新词/复习词 id 存下来
-//  （fr_plan_<mode>），之后同一天、同一个每日数量下重开页面一律直接
-//  读取，不再重算。按日期自动失效；改每日数量时才会重新生成。
-
-function loadTodayPlan(mode, limit) {
+// ─── Fix 9: 今日题库固化 ──────────────────────────────────────
+//  plan.v = 2：新版规则生成的题库；旧版本留下的当天题库一律作废重算。
+//  题库里有词已经不在词库中（比如句子库整体更换）也作废重算。
+function loadTodayPlan(mode, newLimit) {
     const raw = localStorage.getItem('fr_plan_' + mode);
     if (!raw) return null;
     try {
         const plan = JSON.parse(raw);
-        if (plan && plan.dateSeed === todayDateSeed() && plan.limit === limit &&
+        if (plan && plan.v === 2 && plan.dateSeed === todayDateSeed() && plan.limit === newLimit &&
             Array.isArray(plan.ids) && plan.progress) {
-            return plan;
+            const ids = new Set(currentData.map(w => w.id));
+            if (plan.ids.every(id => ids.has(id))) return plan;
         }
     } catch (e) {
         // 解析失败按没有处理
@@ -327,30 +351,30 @@ function loadTodayPlan(mode, limit) {
     return null;
 }
 
-function saveTodayPlan(mode, limit, words) {
+function saveTodayPlan(mode, newLimit, words) {
     localStorage.setItem('fr_plan_' + mode, JSON.stringify({
+        v:        2,
         dateSeed: todayDateSeed(),
-        limit:    limit,
+        limit:    newLimit,
         ids:      words.map(w => w.id),
         progress: todayProgressInfo
     }));
 }
 
 // ─── 队列构建（含历史恢复）────────────────────────────────────
-function buildQueue(limit) {
-    const today    = new Date();
-    const dateSeed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+function buildQueue(newLimit) {
+    const dateSeed = todayDateSeed();
 
-    // Fix 9: 优先复用当天已固化的题库；没有（新的一天 / 改了每日数量）才重新计算
     let fullTodayQueue;
-    const plan = loadTodayPlan(currentMode, limit);
+    const plan = loadTodayPlan(currentMode, newLimit);
     if (plan) {
         const byId = new Map(currentData.map(w => [w.id, w]));
         fullTodayQueue    = plan.ids.map(id => byId.get(id)).filter(Boolean);
         todayProgressInfo = plan.progress;
     } else {
-        fullTodayQueue = buildTodayQueueSRS(currentData, currentMode, limit);
-        saveTodayPlan(currentMode, limit, fullTodayQueue);
+        fullTodayQueue = buildTodayQueueSRS(currentData, currentMode, newLimit);
+        saveTodayPlan(currentMode, newLimit, fullTodayQueue);
+        clearCurrentSession(); // 题库重算了，旧快照不再对应
     }
     mainPool = new Set(fullTodayQueue.map(w => w.id));
 
@@ -385,7 +409,6 @@ function buildQueue(limit) {
     }
 
     if (!hasRestored) {
-        // Fix 9: 题库是复用的时候，今天已经过关的词不能再重复出现
         const doneToday    = new Set(loadAnsweredToday(currentMode).ids);
         queue              = fullTodayQueue.filter(w => !doneToday.has(w.id));
         wrongBuffer        = [];
@@ -444,13 +467,30 @@ function showWordUI() {
     dom.sentenceRevealArea.style.display = 'none';
 }
 
+// ─── 卡片内容 ──────────────────────────────────────────────────
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function(c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+}
+
+// Fix 15: 句子卡片上方显示话题标签
+function cardHTML(word, overrideStreak) {
+    let tag = '';
+    if (isSentenceMode() && word.topic) {
+        tag = '<div class="sentence-tag">' +
+            (word.task ? 'Task ' + word.task + ' · ' : '') + escapeHtml(word.topic) + '</div>';
+    }
+    return tag + escapeHtml(word.cn) + buildStreakBadge(word.id, overrideStreak);
+}
+
 // ─── 渲染 ──────────────────────────────────────────────────────
 function render() {
     clearTimeout(nextTimer);
-    dom.feedback.innerText     = '';
+    dom.feedback.innerText = '';
 
     if (queue.length === 0 && wrongBuffer.length === 0) {
-        dom.cn.innerText             = '今日任务达成！🎉';
+        dom.cn.innerText = mainPool.size === 0 ? '今天没有到期的复习，也没有新内容了 👍' : '今日任务达成！🎉';
         if (isSentenceMode()) {
             dom.sentenceRevealArea.style.display = 'none';
         } else {
@@ -458,10 +498,11 @@ function render() {
         }
         dom.finishArea.style.display = 'block';
         clearCurrentSession();
+        renderProgressHeader();
         return;
     }
 
-    // Fix 4: 先记录上一题再选下一题，保证防重窗口覆盖当前题
+    // Fix 4: 先记录上一题再选下一题
     if (currentWord) {
         recentWords.push(currentWord.id);
         if (recentWords.length > 10) recentWords.shift();
@@ -470,7 +511,6 @@ function render() {
     currentWord = pickNextWord();
     if (!currentWord) return;
 
-    // 根据模式设置 display-cn 的样式
     dom.cn.className = 'word-cn';
     if (isSentenceMode()) {
         dom.cn.classList.add('sentence-mode');
@@ -486,7 +526,7 @@ function render() {
         dom.singleInp.focus();
     }
 
-    dom.cn.innerHTML = currentWord.cn + buildStreakBadge(currentWord.id);
+    dom.cn.innerHTML = cardHTML(currentWord);
 }
 
 // ─── 角标 ──────────────────────────────────────────────────────
@@ -494,7 +534,7 @@ function buildStreakBadge(wordId, overrideStreak) {
     const wi = wrongBuffer.findIndex(function(w) { return w.id === wordId; });
     if (wi === -1 && overrideStreak === undefined) return '';
     const streak = overrideStreak !== undefined ? overrideStreak : (wrongBuffer[wi].streak || 0);
-    return '<span style="font-size:15px; color:#e67e22; background:#fff3e0; padding:4px 10px; border-radius:12px; margin-left:12px; vertical-align:middle; font-weight:normal;">' + streak + '/2</span>';
+    return '<span class="streak-badge">' + streak + '/2</span>';
 }
 
 // ─── 输入事件（单词/动词模式）────────────────────────────────
@@ -502,19 +542,16 @@ dom.singleInp.onkeypress = function(e) {
     if (e.key !== 'Enter') return;
     if (dom.singleInp.readOnly) return;
     if (isSentenceMode()) return;
-
-    const input = dom.singleInp.value.trim().toLowerCase();
     if (!currentWord) return;
 
-    const correct = currentWord.fr.toLowerCase();
+    const input  = dom.singleInp.value;
+    const result = compareAnswer(input, currentWord.fr);
 
     // 强制订正期
     if (forceCorrectWordId === currentWord.id) {
-        if (input === correct) {
+        if (result === 'ok') {
             forceCorrectWordId = null;
-
-            // Fix 1: 订正成功也要推进计数
-            mainAnsweredCount++;
+            mainAnsweredCount++; // Fix 1
 
             showMsg('✔ 订正完成', 'success');
             speak(currentWord.fr);
@@ -526,54 +563,58 @@ dom.singleInp.onkeypress = function(e) {
             saveCurrentSession();
             nextTimer = setTimeout(function() { render(); }, NEXT_DELAY);
         } else {
-            showMsg('❌ 再试一次', 'error');
+            showMsg(result === 'accent' ? '⚠️ 注意重音，再试一次' : '❌ 再试一次', 'error');
             dom.singleInp.value = '';
         }
         return;
     }
 
     speak(currentWord.fr);
-    if (input === correct) {
+    if (result === 'ok') {
         handleCorrect();
     } else {
-        handleWrong(correct);
+        handleWrong(currentWord.fr, result === 'accent');
     }
 };
 
-// ─── 句子模式：Enter 键揭示答案 ──────────────────────────────
-document.addEventListener('keypress', function(e) {
-    if (e.key !== 'Enter') return;
-    if (!isSentenceMode()) return;
-    if (!currentWord) return;
-    if (sentenceRevealed) return;
-
-    revealSentence();
+// ─── 句子模式：键盘 ──────────────────────────────────────────
+//  Enter 揭示答案；揭示后按 1 = 记住了，2 = 没记住
+document.addEventListener('keydown', function(e) {
+    if (!isSentenceMode() || !currentWord) return;
+    if (dom.modal.style.display === 'block') return;
+    if (!sentenceRevealed) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            revealSentence();
+        }
+        return;
+    }
+    if (dom.sentenceJudgeRow.style.display === 'none') return;
+    if (e.key === '1') sentenceJudge(true);
+    else if (e.key === '2') sentenceJudge(false);
 });
 
 function revealSentence() {
     if (sentenceRevealed) return;
     sentenceRevealed = true;
 
-    dom.sentenceAnswer.innerText     = currentWord.fr;
-    dom.sentenceAnswer.style.display = 'block';
-    dom.sentenceHint.style.display   = 'none';
+    dom.sentenceAnswer.innerText       = currentWord.fr;
+    dom.sentenceAnswer.style.display   = 'block';
+    dom.sentenceHint.style.display     = 'none';
     dom.sentenceJudgeRow.style.display = 'flex';
 
-    // 句子也尝试朗读（Fix 6: 句子不在词典音频库里，直接用本地语音）
-    fallbackTTS(currentWord.fr);
+    speak(currentWord.fr);
 }
 
 // ─── 句子自评（记住了 / 没记住）──────────────────────────────
 function sentenceJudge(remembered) {
     if (!currentWord) return;
 
-    // 隐藏判断按钮，防止重复点
     dom.sentenceJudgeRow.style.display = 'none';
 
     if (remembered) {
         handleCorrect();
     } else {
-        // 没记住：放入 wrongBuffer，streak 归零，不需要订正直接下一题
         const qi = queue.findIndex(function(w) { return w.id === currentWord.id; });
         if (qi !== -1) queue.splice(qi, 1);
 
@@ -586,7 +627,7 @@ function sentenceJudge(remembered) {
 
         mainAnsweredCount = 0;
         showMsg('📌 已加入复习队列', 'error');
-        dom.cn.innerHTML = currentWord.cn + buildStreakBadge(currentWord.id, 0);
+        dom.cn.innerHTML = cardHTML(currentWord, 0);
         saveCurrentSession();
         updateCount();
 
@@ -609,19 +650,19 @@ function handleCorrect() {
         if (newStreak >= 2) {
             wrongBuffer.splice(wi, 1);
             answeredIds.add(currentWord.id);
-            markAnsweredToday(currentMode, currentWord.id); // Fix 8: 记入今日已过关名单
-            srsReset(currentMode, currentWord.id); // 印象不牢，退回最短间隔，明天必见
-            dom.cn.innerHTML = currentWord.cn + buildStreakBadge(currentWord.id, 2);
+            markAnsweredToday(currentMode, currentWord.id);
+            srsLapse(currentMode, currentWord.id); // Fix 12
+            dom.cn.innerHTML = cardHTML(currentWord, 2);
         } else {
-            dom.cn.innerHTML = currentWord.cn + buildStreakBadge(currentWord.id, newStreak);
+            dom.cn.innerHTML = cardHTML(currentWord, newStreak);
         }
 
         mainAnsweredCount = 0;
     } else {
         answeredIds.add(currentWord.id);
-        markAnsweredToday(currentMode, currentWord.id); // Fix 8: 记入今日已过关名单
+        markAnsweredToday(currentMode, currentWord.id);
         mainAnsweredCount++;
-        srsAdvance(currentMode, currentWord.id); // 一遍就过，长期间隔正常递增
+        srsAdvance(currentMode, currentWord.id);
     }
 
     showMsg('Très bien !', 'success');
@@ -637,7 +678,7 @@ function handleCorrect() {
 }
 
 // ─── 答错处理（单词/动词模式）────────────────────────────────
-function handleWrong(correct) {
+function handleWrong(correct, accentOnly) {
     const qi = queue.findIndex(function(w) { return w.id === currentWord.id; });
     if (qi !== -1) queue.splice(qi, 1);
 
@@ -651,17 +692,25 @@ function handleWrong(correct) {
     forceCorrectWordId = currentWord.id;
     mainAnsweredCount  = 0;
 
-    showMsg('正确答案: ' + correct, 'error');
+    showMsg((accentOnly ? '⚠️ 重音不对，正确是: ' : '正确答案: ') + correct, 'error');
     saveCurrentSession();
 
-    dom.cn.innerHTML = currentWord.cn + buildStreakBadge(currentWord.id, 0);
+    dom.cn.innerHTML = cardHTML(currentWord, 0);
 }
 
 // ─── 计数 ──────────────────────────────────────────────────────
 function updateCount() {
-    const activeTotal = mainPool.size;
-    const completed   = answeredIds.size;
-    dom.count.innerText = Math.max(0, activeTotal - completed);
+    dom.count.innerText = Math.max(0, mainPool.size - answeredIds.size);
+}
+
+// ─── 每日新词数（兼容旧设置）──────────────────────────────────
+function getNewLimit(mode) {
+    const v = parseInt(localStorage.getItem('fr_newlimit_' + mode));
+    if (v > 0) return v;
+    // 旧版存的是"每日总数"，其中一半是新词
+    const old = parseInt(localStorage.getItem('fr_limit_' + mode));
+    if (old > 0) return Math.max(1, Math.floor(old / 2));
+    return NEW_DEFAULT[mode] || 20;
 }
 
 // ─── 初始化 ────────────────────────────────────────────────────
@@ -669,20 +718,19 @@ async function startApp(mode) {
     currentMode = mode;
 
     let fileName;
-    if (mode === 'verb')     fileName = 'verbs.json';
+    if (mode === 'verb')          fileName = 'verbs.json';
     else if (mode === 'sentence') fileName = 'sentences.json';
-    else                     fileName = 'words.json';
+    else                          fileName = 'words.json';
 
-    const limit = parseInt(localStorage.getItem('fr_limit_' + mode)) || LIMIT_DEFAULT;
+    const newLimit = getNewLimit(mode);
+    dom.limitInp.value = newLimit;
 
-    dom.limitInp.value = limit;
-
-    const res   = await fetch(fileName);
+    const [res] = await Promise.all([fetch(fileName), loadAudioIndex()]);
     currentData = await res.json();
 
     dom.modeOverlay.style.display = 'none';
 
-    buildQueue(limit);
+    buildQueue(newLimit);
     renderProgressHeader();
     render();
 }
@@ -693,7 +741,6 @@ function showMsg(text, type) {
 }
 
 function openSettings() {
-    if (!currentMode) return;
     dom.modal.style.display = 'block';
 }
 
@@ -702,17 +749,61 @@ function closeSettings() {
 }
 
 function saveSettings() {
-    const val = parseInt(dom.limitInp.value) || LIMIT_DEFAULT;
-    localStorage.setItem('fr_limit_' + currentMode, val);
+    if (!currentMode) { closeSettings(); return; }
+    const val = parseInt(dom.limitInp.value) || NEW_DEFAULT[currentMode] || 20;
+    localStorage.setItem('fr_newlimit_' + currentMode, val);
     clearCurrentSession();
     buildQueue(val);
+    renderProgressHeader();
     render();
     closeSettings();
 }
 
-// Fix 3: onvoiceschanged 事件等声音库加载完毕后再朗读
-// Fix 6: 优先选 Mac 本地自带的法语语音（localService === true），
-//        而不是随手抓第一个（可能是音质较差的远程/合成语音）
+// ─── Fix 16: 进度导出 / 导入 ──────────────────────────────────
+function exportProgress() {
+    const data = {};
+    for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('fr_')) data[k] = localStorage.getItem(k);
+    }
+    const blob = new Blob([JSON.stringify({ app: 'french-srs', v: 1, exportedAt: new Date().toISOString(), data: data }, null, 1)],
+                          { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'french-progress-' + todayDateSeed() + '.json';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
+function importProgress() {
+    dom.importFile.value = '';
+    dom.importFile.click();
+}
+
+dom.importFile.onchange = function() {
+    const file = dom.importFile.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function() {
+        try {
+            const parsed = JSON.parse(reader.result);
+            if (!parsed || parsed.app !== 'french-srs' || typeof parsed.data !== 'object') throw new Error('格式不对');
+            if (!confirm('导入会用这个文件覆盖当前浏览器里的学习进度，确定吗？')) return;
+            Object.keys(localStorage).filter(k => k.startsWith('fr_')).forEach(k => localStorage.removeItem(k));
+            Object.keys(parsed.data).forEach(function(k) {
+                if (k.startsWith('fr_')) localStorage.setItem(k, parsed.data[k]);
+            });
+            alert('导入成功，页面将刷新。');
+            location.reload();
+        } catch (e) {
+            alert('导入失败：' + e.message);
+        }
+    };
+    reader.readAsText(file);
+};
+
+// Fix 3 / Fix 6: 系统语音兜底，优先本地法语人声
 function fallbackTTS(text) {
     if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
@@ -721,11 +812,10 @@ function fallbackTTS(text) {
         const msg = new SpeechSynthesisUtterance(text);
         msg.lang  = 'fr-FR';
 
-        const allFr    = window.speechSynthesis.getVoices().filter(function(v) { return v.lang.startsWith('fr'); });
-        const localFr  = allFr.filter(function(v) { return v.localService; });
-        const pool     = localFr.length > 0 ? localFr : allFr;
+        const allFr   = window.speechSynthesis.getVoices().filter(function(v) { return v.lang.startsWith('fr'); });
+        const localFr = allFr.filter(function(v) { return v.localService; });
+        const pool    = localFr.length > 0 ? localFr : allFr;
 
-        // Mac 系统自带法语人声常见名字：Thomas（男声）、Amelie/Audrey（女声）
         msg.voice = pool.find(function(v) { return /Aurélie/i.test(v.name); })
             || pool[0]
             || null;
@@ -746,16 +836,21 @@ function fallbackTTS(text) {
 
 dom.cn.onclick = function() {
     if (!currentWord) return;
-    if (isSentenceMode()) {
-        // 句子模式：点击中文也可以揭示答案
-        if (!sentenceRevealed) revealSentence();
-        else fallbackTTS(currentWord.fr);
-    } else {
-        speak(currentWord.fr);
-    }
+    if (isSentenceMode() && !sentenceRevealed) revealSentence();
+    else speak(currentWord.fr);
 };
+
+// PWA：注册 service worker（离线缓存）
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    window.addEventListener('load', function() {
+        navigator.serviceWorker.register('sw.js').catch(function() {});
+    });
+}
 
 window.startApp       = startApp;
 window.openSettings   = openSettings;
+window.closeSettings  = closeSettings;
 window.saveSettings   = saveSettings;
 window.sentenceJudge  = sentenceJudge;
+window.exportProgress = exportProgress;
+window.importProgress = importProgress;

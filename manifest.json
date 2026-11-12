@@ -1,0 +1,16 @@
+{
+  "name": "法语背诵 · TCF",
+  "short_name": "法语背诵",
+  "description": "按扇贝逻辑间隔重复背法语单词、动词变位和 TCF 口语句子",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f8faf9",
+  "theme_color": "#2ecc71",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

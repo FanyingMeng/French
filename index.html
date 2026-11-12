@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>法语艾宾浩斯默写</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2ecc71">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="法语背诵">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="icon" type="image/png" href="icons/icon-192.png">
     <style>
         :root {
             --sb-green: #2ecc71;
@@ -82,7 +89,7 @@
             cursor: pointer;
             color: #ddd;
             font-size: 20px;
-            z-index: 10;
+            z-index: 30;
         }
 
         .header {
@@ -121,6 +128,42 @@
             text-align: left;
             white-space: pre-line;
             word-wrap: break-word;
+        }
+
+        .sentence-tag {
+            font-size: 12px;
+            font-weight: normal;
+            color: var(--sb-purple);
+            background: #f5eefa;
+            display: table;
+            line-height: 1.4;
+            padding: 3px 10px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+        }
+
+        .streak-badge {
+            font-size: 15px;
+            color: #e67e22;
+            background: #fff3e0;
+            padding: 4px 10px;
+            border-radius: 12px;
+            margin-left: 12px;
+            vertical-align: middle;
+            font-weight: normal;
+        }
+
+        .modal-content .sub-btn {
+            background: #f1f3f2;
+            color: #555;
+            margin-top: 10px;
+        }
+
+        .modal-content .note {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 14px;
+            line-height: 1.5;
         }
 
         .gender-m { color: var(--sb-blue) !important; }
@@ -250,12 +293,16 @@
 </head>
 <body>
 
-<div id="modal">
+<div id="modal" onclick="if (event.target === this) closeSettings()">
     <div class="modal-content">
         <h3>学习设置</h3>
-        <p style="font-size:14px;color:#666">每日计划词数：</p>
-        <input type="number" id="limit-input">
+        <p style="font-size:14px;color:#666">每日新词数（到期复习全部出现）：</p>
+        <input type="number" id="limit-input" min="1">
         <button class="action-btn" onclick="saveSettings()">保存并刷新</button>
+        <button class="action-btn sub-btn" onclick="exportProgress()">⬇️ 导出学习进度</button>
+        <button class="action-btn sub-btn" onclick="importProgress()">⬆️ 导入学习进度</button>
+        <input type="file" id="import-file" accept="application/json,.json" style="display:none">
+        <p class="note">进度保存在当前浏览器里。换设备前先导出，<br>在新设备上导入即可。</p>
     </div>
 </div>
 
@@ -264,7 +311,7 @@
         <h2 style="margin-bottom:30px;color:#333;">Bonjour ! <br>请选择学习内容</h2>
         <button class="mode-btn btn-word"     onclick="startApp('word')">📖 普通单词</button>
         <button class="mode-btn btn-verb"     onclick="startApp('verb')">🔄 动词变位</button>
-        <button class="mode-btn btn-sentence" onclick="startApp('sentence')">💬 背诵句子</button>
+        <button class="mode-btn btn-sentence" onclick="startApp('sentence')">💬 TCF 口语句子</button>
     </div>
 
     <div class="settings-btn" onclick="openSettings()">⚙️</div>
@@ -284,11 +331,11 @@
 
         <!-- 句子模式 揭示区 -->
         <div id="sentence-reveal-area">
-            <div id="sentence-hint">按 Enter 查看答案</div>
+            <div id="sentence-hint">先开口说出法语，再按 Enter 或点击中文查看答案</div>
             <div id="sentence-answer"></div>
             <div class="sentence-judge-row" id="sentence-judge-row">
-                <button class="btn-remembered" id="btn-remembered" onclick="sentenceJudge(true)">✅ 记住了</button>
-                <button class="btn-forgotten"  id="btn-forgotten"  onclick="sentenceJudge(false)">❌ 没记住</button>
+                <button class="btn-remembered" id="btn-remembered" onclick="sentenceJudge(true)">✅ 记住了 <small>(1)</small></button>
+                <button class="btn-forgotten"  id="btn-forgotten"  onclick="sentenceJudge(false)">❌ 没记住 <small>(2)</small></button>
             </div>
         </div>
 
