@@ -107,6 +107,7 @@ function compareAnswer(input, correct) {
 //  文件名 = 法语文本的 FNV-1a 32 位哈希（tools/gen_audio.py 用同一算法），
 //  所以文本一改就会自动生成新音频，同样的文本只存一份。
 let audioIndex = new Set();
+let audioVersion = {}; // 发音修正过的条目：key -> 版本，用来绕过旧缓存
 
 function normalizeForAudio(text) {
     return (text || '').normalize('NFC').replace(/’/g, "'").replace(/\s+/g, ' ').trim();
@@ -128,6 +129,11 @@ async function loadAudioIndex() {
         if (!res.ok) return;
         const list = await res.json();
         if (Array.isArray(list)) audioIndex = new Set(list);
+        const lockRes = await fetch('audio/overrides.lock.json', { cache: 'no-cache' });
+        if (lockRes.ok) {
+            const lock = await lockRes.json();
+            Object.keys(lock).forEach(function(k) { audioVersion[k] = audioKey(lock[k]); });
+        }
     } catch (e) {
         // 还没生成音频时这里会失败，直接用兜底发音
     }
@@ -138,7 +144,8 @@ function playMp3(text) {
     if (!audioIndex.has(key)) return false;
     if (window.speechSynthesis) window.speechSynthesis.cancel();
     if (window.currentAudio) window.currentAudio.pause();
-    window.currentAudio = new Audio('audio/' + key + '.mp3');
+    const v = audioVersion[key] ? '?v=' + audioVersion[key] : '';
+    window.currentAudio = new Audio('audio/' + key + '.mp3' + v);
     window.currentAudio.play().catch(function() {
         // 自动播放被拦截或文件缺失时，退回系统语音
         fallbackTTS(text);
