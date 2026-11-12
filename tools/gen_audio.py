@@ -76,17 +76,29 @@ async def main():
     ap.add_argument('--only', nargs='*', choices=list(SOURCES), help='只生成某几类')
     ap.add_argument('--concurrency', type=int, default=6)
     ap.add_argument('--time-limit', type=int, default=0, help='最多运行多少秒（0 = 不限），到点后保存进度退出')
+    ap.add_argument('--force', action='store_true', help='已有的 mp3 也重新生成（换声音/修正发音时用）')
     args = ap.parse_args()
 
     try:
         import edge_tts
+        import edge_tts.communicate as edge_comm
     except ImportError:
         sys.exit('缺少 edge-tts：请先运行  pip install edge-tts')
+
+    # edge-tts 默认把 SSML 的语言写死成 en-US，只换了声音。法语长句没问题，
+    # 但 car / son / été 这种短词会被按英语规则读。这里改成和声音一致的语言。
+    voice_lang = '-'.join(args.voice.split('-')[:2])  # fr-CA-SylvieNeural -> fr-CA
+    _orig_mkssml = edge_comm.mkssml
+
+    def mkssml_lang(tc, escaped_text):
+        return _orig_mkssml(tc, escaped_text).replace("xml:lang='en-US'", f"xml:lang='{voice_lang}'", 1)
+
+    edge_comm.mkssml = mkssml_lang
 
     os.makedirs(AUDIO_DIR, exist_ok=True)
     jobs = collect(args.only)
     todo = [(k, t, kind) for k, (t, kind) in jobs.items()
-            if not (os.path.exists(os.path.join(AUDIO_DIR, k + '.mp3'))
+            if args.force or not (os.path.exists(os.path.join(AUDIO_DIR, k + '.mp3'))
                     and os.path.getsize(os.path.join(AUDIO_DIR, k + '.mp3')) > 0)]
     print(f'共 {len(jobs)} 条文本，需要生成 {len(todo)} 条，声音 {args.voice}', flush=True)
 

@@ -13,6 +13,11 @@ on:
       - tools/gen_audio.py
       - .github/workflows/tts.yml
   workflow_dispatch:
+    inputs:
+      force:
+        description: '全部重新生成（换声音或修正发音时勾选）'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -37,9 +42,11 @@ jobs:
 
       - name: Generate missing audio
         # 句子优先生成；每次最多跑 40 分钟，没生成完的再手动跑一次即可
+        env:
+          FORCE: ${{ inputs.force && '--force' || '' }}
         run: |
-          python tools/gen_audio.py --only sentence
-          python tools/gen_audio.py --time-limit 2400
+          python tools/gen_audio.py --only sentence $FORCE
+          python tools/gen_audio.py --only word verb $FORCE
 
       - name: Commit audio
         run: |
