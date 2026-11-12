@@ -49,7 +49,12 @@ def load_overrides():
     # 2) 手动修正表优先
     if os.path.exists(OVERRIDES_FILE):
         with open(OVERRIDES_FILE, encoding='utf-8') as f:
-            out.update({audio_key(k): normalize_for_audio(v) for k, v in json.load(f).items()})
+            for k, v in json.load(f).items():
+                if isinstance(v, dict):
+                    text = normalize_for_audio(v.get('text') or k)
+                    out[audio_key(k)] = (v['voice'] + '|' + text) if v.get('voice') else text
+                else:
+                    out[audio_key(k)] = normalize_for_audio(v)
     return out
 
 
@@ -110,11 +115,13 @@ async def main():
 
     # edge-tts 默认把 SSML 的语言写死成 en-US，只换了声音。法语长句没问题，
     # 但 car / son / été 这种短词会被按英语规则读。这里改成和声音一致的语言。
-    voice_lang = '-'.join(args.voice.split('-')[:2])  # fr-CA-SylvieNeural -> fr-CA
     _orig_mkssml = edge_comm.mkssml
 
     def mkssml_lang(tc, escaped_text):
-        return _orig_mkssml(tc, escaped_text).replace("xml:lang='en-US'", f"xml:lang='{voice_lang}'", 1)
+        # 语言取自本条实际使用的声音："...Voice (fr-FR, DeniseNeural)" -> fr-FR
+        m = re.search(r'\(([a-z]{2}-[A-Z]{2}),', tc.voice) or re.match(r'([a-z]{2}-[A-Z]{2})', tc.voice)
+        lang = m.group(1) if m else '-'.join(args.voice.split('-')[:2])
+        return _orig_mkssml(tc, escaped_text).replace("xml:lang='en-US'", f"xml:lang='{lang}'", 1)
 
     edge_comm.mkssml = mkssml_lang
 
@@ -148,7 +155,10 @@ async def main():
             rate = args.sentence_rate if kind == 'sentence' else args.word_rate
             for attempt in range(4):
                 try:
-                    await edge_tts.Communicate(text, args.voice, rate=rate).save(tmp)
+                    voice, spoken = args.voice, text
+                    if '|' in text and text.split('|', 1)[0].count('-') >= 2:
+                        voice, spoken = text.split('|', 1)
+                    await edge_tts.Communicate(spoken, voice, rate=rate).save(tmp)
                     if os.path.getsize(tmp) == 0:
                         raise RuntimeError('生成了空文件')
                     os.replace(tmp, path)
