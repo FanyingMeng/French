@@ -141,6 +141,7 @@ async def main():
                         raise RuntimeError('生成了空文件')
                     os.replace(tmp, path)
                     stats['ok'] += 1
+                    stats.setdefault('done_keys', []).append(key)
                     if stats['ok'] % 200 == 0:
                         print(f'  已生成 {stats["ok"]} 条…', flush=True)
                     return
@@ -154,8 +155,12 @@ async def main():
 
     await asyncio.gather(*(one(k, t, kind) for k, t, kind in todo))
     # 记录已经按修正表生成的条目（只记成功生成的）
-    done_lock = {k: v for k, v in overrides.items()
-                 if k not in jobs or k not in changed or os.path.exists(os.path.join(AUDIO_DIR, k + '.mp3'))}
+    # 不在本次范围（--only）里的条目保留原记录，留给覆盖它的那次运行处理
+    done_lock = {k: v for k, v in lock.items() if k not in jobs}
+    ok_keys = set(stats.get('done_keys', []))
+    for k, v in overrides.items():
+        if k in jobs and (k not in changed or k in ok_keys):
+            done_lock[k] = v
     with open(OVERRIDES_LOCK, 'w', encoding='utf-8') as f:
         json.dump(done_lock, f, ensure_ascii=False, indent=1, sort_keys=True)
     total = write_index()
