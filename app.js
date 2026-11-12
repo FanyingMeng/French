@@ -716,6 +716,8 @@ function getNewLimit(mode) {
 // ─── 初始化 ────────────────────────────────────────────────────
 async function startApp(mode) {
     currentMode = mode;
+    currentWord = null;
+    dom.finishArea.style.display = 'none';
 
     let fileName;
     if (mode === 'verb')          fileName = 'verbs.json';
@@ -734,6 +736,36 @@ async function startApp(mode) {
     renderProgressHeader();
     render();
 }
+
+// ─── 返回主页 ──────────────────────────────────────────────────
+//  进度每答一题就已经保存（SRS + 当天快照），回主页再进来会接着做
+function goHome() {
+    clearTimeout(nextTimer);
+    if (window.currentAudio) window.currentAudio.pause();
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    closeSettings();
+
+    currentMode        = null;
+    currentWord        = null;
+    forceCorrectWordId = null;
+    queue = []; wrongBuffer = []; recentWords = [];
+    answeredIds = new Set(); mainPool = new Set();
+
+    dom.cn.innerText                     = '';
+    dom.feedback.innerText               = '';
+    dom.count.innerText                  = '0';
+    dom.progressInfo.textContent         = '';
+    dom.finishArea.style.display         = 'none';
+    dom.sentenceRevealArea.style.display = 'none';
+    dom.wordArea.style.display           = 'block';
+    dom.singleInp.value                  = '';
+    dom.singleInp.blur();
+    dom.modeOverlay.style.display        = 'flex';
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && currentMode && dom.modal.style.display !== 'block') goHome();
+});
 
 function showMsg(text, type) {
     dom.feedback.innerText = text;
@@ -848,6 +880,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
 }
 
 window.startApp       = startApp;
+window.goHome         = goHome;
 window.openSettings   = openSettings;
 window.closeSettings  = closeSettings;
 window.saveSettings   = saveSettings;

@@ -82,6 +82,22 @@
             flex-direction: column;
         }
 
+        .home-btn {
+            position: absolute;
+            top: 18px;
+            left: 20px;
+            cursor: pointer;
+            color: #aaa;
+            font-size: 14px;
+            padding: 4px 10px;
+            border-radius: 10px;
+            background: #f4f6f5;
+            z-index: 10;
+            user-select: none;
+        }
+
+        .home-btn:hover { color: #555; }
+
         .settings-btn {
             position: absolute;
             top: 20px;
@@ -314,6 +330,7 @@
         <button class="mode-btn btn-sentence" onclick="startApp('sentence')">💬 TCF 口语句子</button>
     </div>
 
+    <div class="home-btn" onclick="goHome()" title="返回主页（Esc）">← 主页</div>
     <div class="settings-btn" onclick="openSettings()">⚙️</div>
 
     <div class="progress-info" id="progress-info"></div>
@@ -343,7 +360,7 @@
 
         <div id="finish-area" style="display:none">
             <h3 style="color:var(--sb-green)">打卡成功！🎉</h3>
-            <button class="action-btn" onclick="location.reload()">再来一轮</button>
+            <button class="action-btn" onclick="goHome()">返回主页</button>
         </div>
     </div>
 </div>
