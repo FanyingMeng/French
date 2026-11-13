@@ -30,6 +30,11 @@
 //   Fix 15. 句子改为一句一卡，按 ouitcf 的话题分组；新句按话题顺序出，
 //           卡片上显示所属话题。
 //   Fix 16. 设置里加"导出/导入进度"，进度不再只能活在一个浏览器里。
+//   Fix 17. 单词/动词的新词第一次就拼对 → 直接约 7 天后复习（说明本来就会），
+//           答错订正的才明天见。句子是第一次学，仍从 1 天开始。
+//   Fix 18. 设置改为"每日总题数"：复习优先（最早到期的先出），剩下的名额给
+//           新词，至少保留 10% 给新词；当天没排上的复习顺延到明天最先出。
+//           间隔 ≥ 7 天的复习在 ±15% 范围内挑最空的一天，把每天的量摊平。
 // ═══════════════════════════════════════════════════════════════
 
 let currentData = [];
@@ -51,7 +56,9 @@ let nextTimer = null;
 
 let todayProgressInfo = null; // { newIds: [...], reviewIds: [...] }
 
-const NEW_DEFAULT         = { word: 30, verb: 30, sentence: 15 };
+const TOTAL_DEFAULT       = { word: 100, verb: 100, sentence: 30 };
+const MIN_NEW_RATIO       = 0.1;  // 每日总题数里至少留给新词的比例
+const FIRST_CORRECT_LEVEL = 3;    // 新词一次拼对直接跳到这一档（SRS_INTERVALS[3] = 7 天）
 const NEXT_DELAY          = 1200;
 const NEW_WORD_INTERVAL   = 3;
 const WRONG_BACKLOG_LIMIT = 2;
@@ -227,12 +234,36 @@ function saveSRS(mode, state) {
     localStorage.setItem('fr_srs_' + mode, JSON.stringify(state));
 }
 
+// Fix 18: 间隔 ≥ 7 天时，在 ±15% 范围内挑到期词最少的一天，避免某天扎堆
+function balancedDueDate(srs, interval) {
+    const today = todayDateSeed();
+    if (interval < 7) return addDaysToSeed(today, interval);
+    const lo = Math.max(1, Math.round(interval * 0.85));
+    const hi = Math.round(interval * 1.15);
+    const load = {};
+    Object.keys(srs).forEach(function(k) {
+        const d = srs[k] && srs[k].dueDate;
+        if (d) load[d] = (load[d] || 0) + 1;
+    });
+    let best = interval, bestLoad = Infinity;
+    for (let k = lo; k <= hi; k++) {
+        const n = load[addDaysToSeed(today, k)] || 0;
+        if (n < bestLoad || (n === bestLoad && Math.abs(k - interval) < Math.abs(best - interval))) {
+            best = k; bestLoad = n;
+        }
+    }
+    return addDaysToSeed(today, best);
+}
+
 // 一遍就答对（没进过错题本）：按等级表往后推进一档，间隔变长
+// Fix 17: 单词/动词的新词第一次就拼对，直接跳到 7 天那一档
 function srsAdvance(mode, wordId) {
     const srs   = loadSRS(mode);
     const cur   = srs[wordId];
-    const level = cur ? Math.min((cur.level || 0) + 1, SRS_INTERVALS.length - 1) : 0;
-    srs[wordId] = { level: level, dueDate: addDaysToSeed(todayDateSeed(), SRS_INTERVALS[level]) };
+    let level;
+    if (cur) level = Math.min((cur.level || 0) + 1, SRS_INTERVALS.length - 1);
+    else     level = mode === 'sentence' ? 0 : FIRST_CORRECT_LEVEL;
+    srs[wordId] = { level: level, dueDate: balancedDueDate(srs, SRS_INTERVALS[level]) };
     saveSRS(mode, srs);
 }
 
@@ -269,8 +300,8 @@ function markAnsweredToday(mode, wordId) {
     }
 }
 
-// Fix 10/11: 新词 = 每日新词数；复习 = 所有到期词（不封顶、不提前借）
-function buildTodayQueueSRS(allWords, mode, newLimit) {
+// Fix 18: 每日总题数固定：复习优先，剩下的名额给新词（至少留 10%）
+function buildTodayQueueSRS(allWords, mode, total) {
     if (!allWords || allWords.length === 0) {
         todayProgressInfo = null;
         return [];
@@ -280,16 +311,23 @@ function buildTodayQueueSRS(allWords, mode, newLimit) {
     const srs           = loadSRS(mode);
     const answeredToday = new Set(loadAnsweredToday(mode).ids);
 
-    // ① 到期复习词：越早到期越优先
-    const reviewSelected = allWords
-        .filter(w => srs[w.id] && srs[w.id].dueDate <= dateSeed && !answeredToday.has(w.id))
-        .sort((a, b) => srs[a.id].dueDate - srs[b.id].dueDate);
+    // 今天已经做过的题也算在今天的总数里（中途改设置/题库重算时不会多给）
+    const budget = Math.max(0, total - answeredToday.size);
 
-    // ② 新词：按 id 升序（=添加进词库的顺序 / 句子的话题顺序）
-    const newSelected = allWords
+    const allDue = allWords
+        .filter(w => srs[w.id] && srs[w.id].dueDate <= dateSeed && !answeredToday.has(w.id))
+        // 越早到期越优先；同一天到期的，等级低（不熟）的优先
+        .sort((a, b) => (srs[a.id].dueDate - srs[b.id].dueDate) || ((srs[a.id].level || 0) - (srs[b.id].level || 0)));
+    const allNew = allWords
         .filter(w => !srs[w.id] && !answeredToday.has(w.id))
-        .sort((a, b) => a.id - b.id)
-        .slice(0, newLimit);
+        .sort((a, b) => a.id - b.id); // 按 id 升序（=添加进词库的顺序 / 句子的话题顺序）
+
+    // ① 复习：最多占 90%（新词学完了就不用留名额）；没排上的保持到期状态，明天最先出
+    const minNew         = Math.min(allNew.length, Math.ceil(budget * MIN_NEW_RATIO));
+    const reviewSelected = allDue.slice(0, budget - minNew);
+
+    // ② 新词：剩下的名额
+    const newSelected = allNew.slice(0, budget - reviewSelected.length);
 
     todayProgressInfo = {
         newIds:    newSelected.map(w => w.id),
@@ -320,7 +358,7 @@ function renderProgressHeader() {
     const srs     = loadSRS(currentMode);
     const learned = currentData.filter(w => srs[w.id]).length;
     dom.progressInfo.textContent =
-        '今日新学 ' + n + ' · 复习 ' + r + ' · 已学 ' + learned + ' / ' + currentData.length;
+        '今日复习 ' + r + ' · 新学 ' + n + ' · 已学 ' + learned + ' / ' + currentData.length;
 }
 
 // ─── 今日进度持久化 ────────────────────────────────────────────
@@ -340,14 +378,14 @@ function clearCurrentSession() {
 }
 
 // ─── Fix 9: 今日题库固化 ──────────────────────────────────────
-//  plan.v = 2：新版规则生成的题库；旧版本留下的当天题库一律作废重算。
+//  plan.v = 3：新版规则（每日总题数）生成的题库；旧版本留下的当天题库一律作废重算。
 //  题库里有词已经不在词库中（比如句子库整体更换）也作废重算。
 function loadTodayPlan(mode, newLimit) {
     const raw = localStorage.getItem('fr_plan_' + mode);
     if (!raw) return null;
     try {
         const plan = JSON.parse(raw);
-        if (plan && plan.v === 2 && plan.dateSeed === todayDateSeed() && plan.limit === newLimit &&
+        if (plan && plan.v === 3 && plan.dateSeed === todayDateSeed() && plan.limit === newLimit &&
             Array.isArray(plan.ids) && plan.progress) {
             const ids = new Set(currentData.map(w => w.id));
             if (plan.ids.every(id => ids.has(id))) return plan;
@@ -360,7 +398,7 @@ function loadTodayPlan(mode, newLimit) {
 
 function saveTodayPlan(mode, newLimit, words) {
     localStorage.setItem('fr_plan_' + mode, JSON.stringify({
-        v:        2,
+        v:        3,
         dateSeed: todayDateSeed(),
         limit:    newLimit,
         ids:      words.map(w => w.id),
@@ -711,14 +749,15 @@ function updateCount() {
     renderProgressHeader(); // "已学 X / Y" 跟着每次答题实时刷新
 }
 
-// ─── 每日新词数（兼容旧设置）──────────────────────────────────
+// ─── 每日总题数（兼容旧设置）──────────────────────────────────
 function getNewLimit(mode) {
-    const v = parseInt(localStorage.getItem('fr_newlimit_' + mode));
+    const v = parseInt(localStorage.getItem('fr_total_' + mode));
     if (v > 0) return v;
-    // 旧版存的是"每日总数"，其中一半是新词
-    const old = parseInt(localStorage.getItem('fr_limit_' + mode));
-    if (old > 0) return Math.max(1, Math.floor(old / 2));
-    return NEW_DEFAULT[mode] || 20;
+    // 上一版存的是"每日新词数"，最早一版存的是"每日总数"：数值直接沿用
+    const prev = parseInt(localStorage.getItem('fr_newlimit_' + mode)) ||
+                 parseInt(localStorage.getItem('fr_limit_' + mode));
+    if (prev > 0) return prev;
+    return TOTAL_DEFAULT[mode] || 50;
 }
 
 // ─── 初始化 ────────────────────────────────────────────────────
@@ -790,8 +829,8 @@ function closeSettings() {
 
 function saveSettings() {
     if (!currentMode) { closeSettings(); return; }
-    const val = parseInt(dom.limitInp.value) || NEW_DEFAULT[currentMode] || 20;
-    localStorage.setItem('fr_newlimit_' + currentMode, val);
+    const val = parseInt(dom.limitInp.value) || TOTAL_DEFAULT[currentMode] || 50;
+    localStorage.setItem('fr_total_' + currentMode, val);
     clearCurrentSession();
     buildQueue(val);
     renderProgressHeader();
