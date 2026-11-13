@@ -374,12 +374,16 @@ function renderProgressHeader() {
         dom.progressInfo.textContent = '';
         return;
     }
-    const n = todayProgressInfo.newIds.length;
-    const r = todayProgressInfo.reviewIds.length;
+    const done    = new Set(loadAnsweredToday(currentMode).ids);
+    const r       = todayProgressInfo.reviewIds;
+    const n       = todayProgressInfo.newIds;
+    const rDone   = r.filter(id => done.has(id)).length;
+    const nDone   = n.filter(id => done.has(id)).length;
     const srs     = loadSRS(currentMode);
     const learned = currentData.filter(w => srs[w.id]).length;
     dom.progressInfo.textContent =
-        '今日复习 ' + r + ' · 新学 ' + n + ' · 已学 ' + learned + ' / ' + currentData.length;
+        '今日复习 ' + rDone + '/' + r.length + ' · 新学 ' + nDone + '/' + n.length +
+        ' · 已学 ' + learned + ' / ' + currentData.length;
 }
 
 // ─── 今日进度持久化 ────────────────────────────────────────────
