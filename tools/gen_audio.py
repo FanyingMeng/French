@@ -97,8 +97,8 @@ def write_index():
 
 async def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--voice', default='fr-CA-SylvieNeural',
-                    help='默认加拿大法语女声；可选 fr-CA-AntoineNeural / fr-FR-DeniseNeural / fr-FR-HenriNeural 等')
+    ap.add_argument('--voice', default='fr-FR-DeniseNeural',
+                    help='默认法国法语女声；可选 fr-FR-HenriNeural / fr-CA-SylvieNeural / fr-CA-AntoineNeural 等')
     ap.add_argument('--sentence-rate', default='-5%', help='句子语速，比如 -10%% 更慢')
     ap.add_argument('--word-rate', default='-5%')
     ap.add_argument('--only', nargs='*', choices=list(SOURCES), help='只生成某几类')

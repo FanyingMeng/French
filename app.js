@@ -113,6 +113,7 @@ function compareAnswer(input, correct) {
 //  文件名 = 法语文本的 FNV-1a 32 位哈希（tools/gen_audio.py 用同一算法），
 //  所以文本一改就会自动生成新音频，同样的文本只存一份。
 let audioIndex = new Set();
+const AUDIO_REV  = 'denise'; // 整体换声音时改这个，所有录音换新地址，绕过旧缓存
 let audioVersion = {}; // 发音修正过的条目：key -> 版本，用来绕过旧缓存
 
 function normalizeForAudio(text) {
@@ -150,7 +151,7 @@ function playMp3(text) {
     if (!audioIndex.has(key)) return false;
     if (window.speechSynthesis) window.speechSynthesis.cancel();
     if (window.currentAudio) window.currentAudio.pause();
-    const v = audioVersion[key] ? '?v=' + audioVersion[key] : '';
+    const v = '?r=' + AUDIO_REV + (audioVersion[key] ? '&v=' + audioVersion[key] : '');
     window.currentAudio = new Audio('audio/' + key + '.mp3' + v);
     window.currentAudio.play().catch(function() {
         // 自动播放被拦截或文件缺失时，退回系统语音

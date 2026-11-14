@@ -40,7 +40,7 @@
 
 ## 发音
 
-优先播放 `audio/` 里预生成的 mp3（加拿大法语神经语音 fr-CA-Sylvie），没有的才用词典音频或系统语音。
+优先播放 `audio/` 里预生成的 mp3（法国法语神经语音女声 fr-FR-Denise），没有的才用词典音频或系统语音。
 
 mp3 由 GitHub Actions 自动生成（`.github/workflows/tts.yml`），**免费、不需要任何账号**：
 推送改动过的 JSON 后会自动补上新句子的音频。
@@ -50,7 +50,7 @@ mp3 由 GitHub Actions 自动生成（`.github/workflows/tts.yml`），**免费�
 
 ```bash
 pip install edge-tts
-python tools/gen_audio.py --voice fr-FR-DeniseNeural
+python tools/gen_audio.py --voice fr-FR-HenriNeural --force
 ```
 
 ## 进度备份 / 手机使用
