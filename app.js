@@ -649,7 +649,7 @@ dom.singleInp.onkeypress = function(e) {
 };
 
 // ─── 句子模式：键盘 ──────────────────────────────────────────
-//  Enter 揭示答案；揭示后按 1 = 记住了，2 = 没记住
+//  Enter 揭示答案；揭示后按 ← = 记住了，→ = 没记住
 document.addEventListener('keydown', function(e) {
     if (!isSentenceMode() || !currentWord) return;
     if (dom.modal.style.display === 'block') return;
@@ -661,8 +661,8 @@ document.addEventListener('keydown', function(e) {
         return;
     }
     if (dom.sentenceJudgeRow.style.display === 'none') return;
-    if (e.key === '1') sentenceJudge(true);
-    else if (e.key === '2') sentenceJudge(false);
+    if (e.key === 'ArrowLeft')       { e.preventDefault(); sentenceJudge(true); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); sentenceJudge(false); }
 });
 
 function revealSentence() {
