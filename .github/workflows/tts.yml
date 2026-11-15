@@ -10,6 +10,7 @@ on:
       - words.json
       - verbs.json
       - sentences.json
+      - essays.json
       - tools/gen_audio.py
       - tools/tts_overrides.json
       - .github/workflows/tts.yml
@@ -46,7 +47,7 @@ jobs:
         env:
           FORCE: ${{ inputs.force && '--force' || '' }}
         run: |
-          python tools/gen_audio.py --only sentence $FORCE
+          python tools/gen_audio.py --only sentence essay $FORCE
           python tools/gen_audio.py --only word verb $FORCE
 
       - name: Commit audio

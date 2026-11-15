@@ -803,6 +803,7 @@ async function startApp(mode) {
 
     const newLimit = getNewLimit(mode);
     dom.limitInp.value = newLimit;
+    document.getElementById('limit-label').textContent = '每日新词数（到期复习全部出现）：';
 
     const [res] = await Promise.all([fetch(fileName), loadAudioIndex()]);
     currentData = await res.json();
@@ -818,6 +819,7 @@ async function startApp(mode) {
 //  进度每答一题就已经保存（SRS + 当天快照），回主页再进来会接着做
 function goHome() {
     clearTimeout(nextTimer);
+    if (window.essayExit) essayExit();
     if (window.currentAudio) window.currentAudio.pause();
     if (window.speechSynthesis) window.speechSynthesis.cancel();
     closeSettings();
@@ -859,6 +861,11 @@ function closeSettings() {
 
 function saveSettings() {
     if (!currentMode) { closeSettings(); return; }
+    if (currentMode === 'essay') {
+        essaySaveSettings(parseInt(dom.limitInp.value) || 1);
+        closeSettings();
+        return;
+    }
     const val = parseInt(dom.limitInp.value) || NEW_DEFAULT[currentMode] || 20;
     localStorage.setItem('fr_new_' + currentMode, val);
     clearCurrentSession();

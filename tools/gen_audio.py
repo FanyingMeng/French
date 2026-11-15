@@ -27,7 +27,7 @@ import unicodedata
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 AUDIO_DIR = os.path.join(ROOT, 'audio')
-SOURCES = {'word': 'words.json', 'verb': 'verbs.json', 'sentence': 'sentences.json'}
+SOURCES = {'word': 'words.json', 'verb': 'verbs.json', 'sentence': 'sentences.json', 'essay': 'essays.json'}
 # 发音修正表：{"页面上显示的法语": "实际让语音朗读的文字"}。
 # 某条读错时在这里加一行，推送后只会重新生成这几条。
 OVERRIDES_FILE = os.path.join(ROOT, 'tools', 'tts_overrides.json')
@@ -77,12 +77,16 @@ def collect(only):
         if only and kind not in only:
             continue
         with open(os.path.join(ROOT, fname), encoding='utf-8') as f:
-            for item in json.load(f):
+            items = json.load(f)
+            if kind == 'essay':  # 范文：题目 + 每一段，都按句子语速朗读
+                items = [{'fr': e['question']} for e in items] + \
+                        [{'fr': p['fr']} for e in items for p in e['parts']]
+            for item in items:
                 text = normalize_for_audio(item.get('fr', ''))
                 if text:
                     # 句子优先：同一文本既是单词又是句子时，按句子语速生成
                     k = audio_key(text)
-                    if k not in jobs or kind == 'sentence':
+                    if k not in jobs or kind in ('sentence', 'essay'):
                         jobs[k] = (text, kind)
     return jobs
 
@@ -152,7 +156,7 @@ async def main():
         async with sem:
             path = os.path.join(AUDIO_DIR, key + '.mp3')
             tmp = path + '.part'
-            rate = args.sentence_rate if kind == 'sentence' else args.word_rate
+            rate = args.sentence_rate if kind in ('sentence', 'essay') else args.word_rate
             for attempt in range(4):
                 try:
                     voice, spoken = args.voice, text
