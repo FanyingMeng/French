@@ -56,7 +56,14 @@ let nextTimer = null;
 
 let todayProgressInfo = null; // { newIds: [...], reviewIds: [...] }
 
-const NEW_DEFAULT         = { word: 100, verb: 50, sentence: 15 };
+const NEW_DEFAULT         = { word: 100, verb: 50, sentence: 30 };
+// 一次性调整：句子每日新学改为 30（之前在设置里保存过的数值也改成 30，之后再改设置照常生效）
+try {
+    if (!localStorage.getItem('fr_migr_sentence30')) {
+        localStorage.setItem('fr_new_sentence', '30');
+        localStorage.setItem('fr_migr_sentence30', '1');
+    }
+} catch (e) {}
 const FIRST_CORRECT_LEVEL = 3;    // 新词一次拼对直接跳到这一档（SRS_INTERVALS[3] = 7 天）
 const NEXT_DELAY          = 1200;
 const NEW_WORD_INTERVAL   = 3;

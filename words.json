@@ -4067,5 +4067,8 @@
 {"id":4066,"cn":"转车 / 换乘 / 通信","fr":"faire une correspondance","gender":"none"},
 {"id":4067,"cn":"搭乘一个接驳交通工具","fr":"prendre une correspondance","gender":"none"},
 {"id":4068,"cn":"建立一个关联 / 建立对应关系","fr":"établir une correspondance entre","gender":"none"},
-{"id":4069,"cn":"促进新移民的融入","fr":"faciliter l'intégration des nouveaux arrivants","gender":"none"}
+{"id":4069,"cn":"促进新移民的融入","fr":"faciliter l'intégration des nouveaux arrivants","gender":"none"},
+{"id":4070,"cn":"预订一个度假木屋（chalet：山间/湖边小木屋）","fr":"réserver un chalet","gender":"none"},
+{"id":4071,"cn":"在合租房里，以合租的方式（住）","fr":"dans une colocation","gender":"none"},
+{"id":4072,"cn":"一节课，一堂课（séance 指一次/一节）","fr":"une séance de cours","gender":"none"}
 ]
