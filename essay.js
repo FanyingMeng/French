@@ -191,7 +191,8 @@
                     ? '<div class="essay-fr" onclick="essaySay(' + i + ')" title="点击再听一遍">' + escapeHtml(p.fr) + '</div>' +
                       '<div class="sentence-judge-row" style="display:flex">' +
                       '<button class="btn-remembered" onclick="essayJudgeSeg(true)">✅ 记住了 <small>←</small></button>' +
-                      '<button class="btn-forgotten" onclick="essayJudgeSeg(false)">❌ 没记住 <small>→</small></button></div>'
+                      '<button class="btn-forgotten" onclick="essayJudgeSeg(false)">❌ 没记住 <small>→</small></button></div>' +
+                      '<p class="essay-note">按空格再听一遍</p>'
                     : '<div id="sentence-hint">先按提纲开口说这一段，再按 Enter 看法语</div>' +
                       '<button class="action-btn sub-btn" onclick="essayReveal()">看法语 <small>Enter</small></button>') +
                 '<p class="essay-note">已过 ' + doneCount + ' / ' + e.parts.length + ' 段</p>';
@@ -218,7 +219,7 @@
                 '<div class="essay-qcn">用时 ' + fmt(sec) + (sec < 180 ? '（偏短，考试要说满 3 分钟以上）' : sec > 270 ? '（偏长）' : '（时长合适）') + '</div>' +
                 '<div class="essay-row">' +
                 '<button class="action-btn sub-btn" id="essay-play-rec" onclick="essayPlayRec()" style="' + (recUrl ? '' : 'display:none') + '">▶️ 听我的录音</button>' +
-                '<button class="action-btn sub-btn" onclick="essaySay(\'all\')">🔊 听范文</button></div>' +
+                '<button class="action-btn sub-btn" onclick="essaySay(\'all\')">🔊 听范文 <small>空格</small></button></div>' +
                 e.parts.map((p, k) => '<div class="essay-full-part"><b onclick="essaySay(' + k + ')">' + p.label_cn + ' 🔊</b> ' + escapeHtml(p.fr) + '</div>').join('') +
                 (e.expressions.length ? '<details class="essay-more"><summary>关键表达</summary><ul>' +
                     e.expressions.map(x => '<li>' + escapeHtml(x) + '</li>').join('') + '</ul></details>' : '') +
@@ -334,7 +335,18 @@
 
     document.addEventListener('keydown', function(e) {
         if (currentMode !== MODE || $('modal').style.display === 'block') return;
-        if (e.key === 'Enter') {
+        if (e.key === ' ') {
+            // 空格：再听一遍（分段没看答案前不播放，免得提前听到）
+            e.preventDefault();
+            if (document.activeElement && document.activeElement.tagName === 'BUTTON') document.activeElement.blur();
+            if (step === 'seg' && segShown) say(cur.essay.parts[segQueue[0]].fr);
+            else if (step === 'intro' || step === 'full') say(cur.essay.question);
+            else if (step === 'fullReveal') {
+                // 整篇范文较长：正在播放就停，否则从头播放
+                if (window.currentAudio && !window.currentAudio.paused) stopAudio();
+                else sayPart('all');
+            }
+        } else if (e.key === 'Enter') {
             e.preventDefault();
             if (step === 'intro') go(cur.isNew ? 'seg' : 'full');
             else if (step === 'seg') reveal();

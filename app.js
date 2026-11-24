@@ -656,10 +656,16 @@ dom.singleInp.onkeypress = function(e) {
 };
 
 // ─── 句子模式：键盘 ──────────────────────────────────────────
-//  Enter 揭示答案；揭示后按 ← = 记住了，→ = 没记住
+//  Enter 揭示答案；揭示后按 ← = 记住了，→ = 没记住；空格 = 再听一遍
 document.addEventListener('keydown', function(e) {
     if (!isSentenceMode() || !currentWord) return;
     if (dom.modal.style.display === 'block') return;
+    if (e.key === ' ' && sentenceRevealed) {
+        e.preventDefault();
+        if (document.activeElement && document.activeElement.tagName === 'BUTTON') document.activeElement.blur();
+        speak(currentWord.fr);
+        return;
+    }
     if (!sentenceRevealed) {
         if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
@@ -677,6 +683,7 @@ function revealSentence() {
     sentenceRevealed = true;
 
     dom.sentenceAnswer.innerText       = currentWord.fr;
+    dom.sentenceAnswer.title           = '按空格或点击再听一遍';
     dom.sentenceAnswer.style.display   = 'block';
     dom.sentenceHint.style.display     = 'none';
     dom.sentenceJudgeRow.style.display = 'flex';
